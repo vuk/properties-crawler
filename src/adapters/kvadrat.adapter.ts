@@ -54,4 +54,8 @@ export class KvadratAdapter extends AbstractAdapter {
     validateLink(url: string): boolean {
         return url.indexOf(this.baseUrl) !== -1 && (url.indexOf('/sr/listing/') !== -1 || url.indexOf('sr/nekretnine/prodaja/') !== -1);
     }
+
+    store(entry: any): Promise<any> {
+        return undefined;
+    }
 }

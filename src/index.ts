@@ -57,8 +57,8 @@ async function duplicatedRequest(url: string): Promise<boolean> {
 seen.initialize()
     .then(() => {
         var crawler = new Crawler({
-            rateLimit: 2,
-            maxConnections: 1,
+            rateLimit: 1000,
+            maxConnections: 1000,
             callback : async (error: Error, res: any, done: Function) => {
                 if(error){
                     console.log(chalk.red(error));
