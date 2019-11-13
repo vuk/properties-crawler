@@ -5,6 +5,8 @@ const Crawler = require("crawler");
 const seenreq = require('seenreq')
     , seen = new seenreq();
 
+require('dotenv').config();
+
 let adapters: AbstractAdapter[] = [];
 adapters.push(new KvadratAdapter());
 
@@ -56,9 +58,8 @@ async function duplicatedRequest(url: string): Promise<boolean> {
 
 seen.initialize()
     .then(() => {
-        var crawler = new Crawler({
-            rateLimit: 1000,
-            maxConnections: 1000,
+        let crawler = new Crawler({
+            maxConnections: 100,
             callback : async (error: Error, res: any, done: Function) => {
                 if(error){
                     console.log(chalk.red(error));
