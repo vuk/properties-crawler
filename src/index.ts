@@ -71,8 +71,7 @@ seen.initialize()
                     if (adapters[0].validateListing(res.request.uri.href)) {
                         if (adapters[0].shouldReturn(res)) {
                             let property = adapters[0].parseData(res);
-                            console.log(chalk.green('[INFO]') + 'Got property', property);
-                            await adapters[0].store(res);
+                            await adapters[0].store(property);
                         }
                     }
                 }
