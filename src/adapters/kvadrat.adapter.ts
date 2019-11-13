@@ -12,47 +12,96 @@ export class KvadratAdapter extends AbstractAdapter {
     }
 
     getArea(entry: any): number {
-        return 0;
+        let area = 0;
+        entry.$('.property-d-table .col-md-6')
+            .first().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'kvadratura') {
+                    area = parseFloat(entry.$(row).children('td').last().text());
+                }
+            });
+        return area;
     }
 
     getDescription(entry: any): string {
-        return "";
+        return entry.$('#description').text();
     }
 
     getFloor(entry: any): number {
-        return 0;
+        let floor = null;
+        entry.$('.property-d-table .col-md-6')
+            .last().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'sprat') {
+                    floor = entry.$(row).children('td').last().text();
+                    if (floor.toString() === 'pr') {
+                        floor = '0';
+                    }
+                }
+            });
+        return parseInt(floor);
     }
 
     getFloors(entry: any): number {
-        return 0;
+        let floors = null;
+        entry.$('.property-d-table .col-md-6')
+            .last().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'broj spratova') {
+                    floors = entry.$(row).children('td').last().text();
+                }
+            });
+        return parseInt(floors);
     }
 
     getImage(entry: any): string {
-        return "";
+        return entry.$('#property-d-1').children('.item').first().children('img').attr('src');
     }
 
     getPrice(entry: any): number {
-        return 0;
+        let price = null;
+        entry.$('.property-d-table .col-md-6')
+            .first().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'ukupna cena') {
+                    price = parseFloat(entry.$(row).children('td').last().text().replace('.', ''));
+                }
+            });
+        return price;
     }
 
     getRooms(entry: any): number {
-        return 0;
+        let rooms = null;
+        entry.$('.property-d-table .col-md-6')
+            .first().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'broj soba') {
+                    rooms = parseFloat(entry.$(row).children('td').last().text());
+                }
+            });
+        return rooms;
     }
 
     getTitle(entry: any): string {
-        return "";
-    }
-
-    getUnitPrice(entry: any): number {
-        return 0;
-    }
-
-    getUrl(entry: any): string {
-        return "";
+        return entry.$('h1').text();
     }
 
     validateLink(url: string): boolean {
-        return url.indexOf(this.baseUrl) !== -1 && (url.indexOf('/sr/listing/') !== -1 || url.indexOf('sr/nekretnine/prodaja/') !== -1);
+        return url.indexOf(this.baseUrl) !== -1 && (url.indexOf('sr/listing/') !== -1 || url.indexOf('sr/nekretnine/prodaja/') !== -1);
+    }
+
+    validateListing(url: string): boolean {
+        return url.indexOf(this.baseUrl) !== -1 && url.indexOf('sr/listing/') !== -1;
     }
 
     store(entry: any): Promise<any> {

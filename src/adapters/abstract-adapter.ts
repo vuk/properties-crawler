@@ -7,12 +7,17 @@ export abstract class AbstractAdapter {
     abstract getFloor(entry: any): number;
     abstract getFloors(entry: any): number;
     abstract getPrice(entry: any): number;
-    abstract getUnitPrice(entry: any): number;
+    getUnitPrice(entry: any): number {
+        return this.getPrice(entry) / this.getArea(entry);
+    }
     abstract getImage(entry: any): string;
     abstract getTitle(entry: any): string;
     abstract getDescription(entry: any): string;
-    abstract getUrl(entry: any): string;
+    getUrl(entry: any): string {
+        return entry.request.uri.href;
+    }
     abstract validateLink(url: string): boolean;
+    abstract validateListing(url: string): boolean;
     shouldReturn(entry: any): boolean {
         if (process.env.NO_ATTIC && this.getFloors(entry) === this.getFloor(entry)) {
             return false;
@@ -28,6 +33,20 @@ export abstract class AbstractAdapter {
             this.getPrice(entry) >= parseInt(process.env.MIN_PRICE) &&
             this.getArea(entry) >= parseInt(process.env.MIN_AREA) &&
             this.getArea(entry) <= parseInt(process.env.MAX_AREA);
+    }
+    parseData(entry: any): any {
+        return {
+            url: this.getUrl(entry),
+            title: this.getTitle(entry),
+            description: this.getDescription(entry),
+            area: this.getArea(entry),
+            floor: this.getFloor(entry),
+            floors: this.getFloors(entry),
+            rooms: this.getRooms(entry),
+            price: this.getPrice(entry),
+            unitPrice: this.getUnitPrice(entry),
+            image: this.getImage(entry),
+        }
     }
     abstract store(entry: any): Promise<any>;
 }

@@ -59,18 +59,21 @@ async function duplicatedRequest(url: string): Promise<boolean> {
 seen.initialize()
     .then(() => {
         let crawler = new Crawler({
-            maxConnections: 100,
+            rateLimit: 1000,
+            maxConnections: 1000,
             callback : async (error: Error, res: any, done: Function) => {
                 if(error){
                     console.log(chalk.red(error));
                 } else{
-                    var $ = res.$;
-                    console.log(chalk.green('[INFO] ') + 'Got result for: ' + res.request.uri.href);
+                    let $ = res.$;
                     // $ is Cheerio by default
                     await queueLinks($, crawler);
-
-                    if (adapters[0].shouldReturn(res.$)) {
-                        await adapters[0].store(res.$);
+                    if (adapters[0].validateListing(res.request.uri.href)) {
+                        if (adapters[0].shouldReturn(res)) {
+                            let property = adapters[0].parseData(res);
+                            console.log(chalk.green('[INFO]') + 'Got property', property);
+                            await adapters[0].store(res);
+                        }
                     }
                 }
                 done();
