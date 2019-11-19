@@ -1,4 +1,3 @@
-const mysql = require('mysql');
 require('dotenv').config();
 
 export interface Property {
@@ -13,13 +12,6 @@ export interface Property {
     unitPrice: number,
     image: string
 }
-
-const connection = mysql.createConnection({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DB
-});
 
 export abstract class AbstractAdapter {
     abstract baseUrl: string;
@@ -87,19 +79,7 @@ export abstract class AbstractAdapter {
         }
     }
 
-    store(property: Property): Promise<any> {
-        return new Promise((resolve, reject) => {
-            connection.connect();
-            console.log('Storing property', property);
-            connection.query(`INSERT INTO properties(url, image, floor, floors, title, description, price, unitPrice, rooms, area, user_id) 
-                VALUES (${property.url}, ${property.image}, ${property.floor}, ${property.floors}, ${property.title}, ${property.description}, ${property.price}, ${property.unitPrice}, ${property.rooms}, ${property.area}, 0)`,
-                function (error: any, results: any, fields: any) {
-                    connection.end();
-                    if (error) reject(error);
-                    console.log('Saved to database: ', results, property);
-                    resolve(results);
-                });
-
-        });
+    async store(property: Property): Promise<any> {
+        return null;
     }
 }

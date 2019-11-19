@@ -8,14 +8,16 @@
     "cheerio": "^1.0.0-rc.3",
     "crawler": "^1.2.1",
     "dotenv": "^8.2.0",
-    "mysql": "^2.17.1",
+    "mongoose": "^5.7.11",
     "seenreq": "^3.0.0"
   },
   "devDependencies": {
     "@types/chalk": "^2.2.0",
     "@types/cheerio": "^0.22.14",
     "@types/dotenv": "^8.2.0",
-    "@types/mysql": "^2.15.8",
+    "@types/mongoose": "^5.5.32",
+    "nodemon": "^1.19.4",
+    "npm-run-all": "^4.1.5",
     "npx": "^10.2.0",
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.2",
@@ -25,7 +27,10 @@
   "scripts": {
     "build": "npx webpack",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:daemon": "nodemon dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "run-s build start",
+    "deploy:daemon": "run-s build start:daemon"
   },
   "repository": {
     "type": "git",
