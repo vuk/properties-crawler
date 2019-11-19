@@ -11,10 +11,10 @@ let adapters: AbstractAdapter[] = [];
 adapters.push(new KvadratAdapter());
 
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
-    if (!url) return false;
+    if (!url || !await duplicatedRequest(url)) return false;
     for(let i = 0; i < adapters.length; i++) {
-        if (adapters[i].validateLink(url) && !await duplicatedRequest(url)) {
-            //console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
+        if (adapters[i].validateLink(url)) {
+            console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
             crawler.queue(url);
             return true;
         }
@@ -22,7 +22,7 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
     return false;
 }
 
-async function queueLinks($: any, crawler: any): Promise<void> {
+async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Promise<void> {
     let uniqueLinks: string[] = [];
     $('a').each( async (index: number, element: any) => {
         let link = $(element).attr('href');
@@ -42,14 +42,15 @@ function initiateCrawl(crawler: any, adapters: AbstractAdapter[]): void {
     }
 }
 
-function getType(url: string): boolean {
-    if (!url) return false;
+function getAdapter(url: string): AbstractAdapter {
+    if (!url) return null;
     for(let i = 0; i < adapters.length; i++) {
-        if (adapters[i].isType(url)) {
-            return true;
+        const adapter = adapters[i].isType(url);
+        if (adapter) {
+            return adapter;
         }
     }
-    return false;
+    return null;
 }
 
 async function duplicatedRequest(url: string): Promise<boolean> {
@@ -67,12 +68,11 @@ seen.initialize()
                 } else{
                     let $ = res.$;
                     // $ is Cheerio by default
-                    await queueLinks($, crawler);
-                    if (adapters[0].validateListing(res.request.uri.href)) {
-                        if (adapters[0].shouldReturn(res)) {
-                            let property = adapters[0].parseData(res);
-                            await adapters[0].store(property);
-                        }
+                    await queueLinks($, crawler, adapters);
+                    const adapter = getAdapter(res.request.uri.href);
+                    if (adapter && adapter.validateListing(res.request.uri.href)) {
+                        let property = adapter.parseData(res);
+                        await adapter.store(property);
                     }
                 }
                 done();

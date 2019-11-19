@@ -4,11 +4,11 @@ export class KvadratAdapter extends AbstractAdapter {
     baseUrl: string = 'http://www.kvadratnekretnine.com/';
     seedUrl: string[] = ['http://www.kvadratnekretnine.com/sr/nekretnine/prodaja/'];
 
-    isType(url: string): any {
+    isType(url: string): KvadratAdapter {
         if (url.indexOf(this.baseUrl) !== -1) {
-            return this instanceof KvadratAdapter;
+            return this;
         }
-        return false;
+        return null;
     }
 
     getArea(entry: any): number {

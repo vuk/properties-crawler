@@ -17,7 +17,7 @@ export abstract class AbstractAdapter {
     abstract baseUrl: string;
     abstract seedUrl: string[];
 
-    abstract isType(url: string): boolean;
+    abstract isType(url: string): AbstractAdapter;
 
     abstract getRooms(entry: any): number;
 
