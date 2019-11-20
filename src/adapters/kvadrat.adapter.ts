@@ -38,7 +38,7 @@ export class KvadratAdapter extends AbstractAdapter {
             .each((rowIndex: number, row: any) => {
                 if (entry.$(row).children('td').first().text().toLowerCase() === 'sprat') {
                     floor = entry.$(row).children('td').last().text();
-                    if (floor.toString() === 'pr') {
+                    if (floor.toString() === 'pr' || isNaN(parseInt(floor))) {
                         floor = '0';
                     }
                 }

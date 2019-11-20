@@ -2,9 +2,8 @@ import dotenv from "dotenv";
 import {KvadratAdapter} from "./adapters/kvadrat.adapter";
 import {AbstractAdapter} from "./adapters/abstract-adapter";
 import chalk from 'chalk';
-const Crawler = require("crawler");
-const seenreq = require('seenreq')
-    , seen = new seenreq();
+import Crawler from 'crawler';
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -12,7 +11,7 @@ let adapters: AbstractAdapter[] = [];
 adapters.push(new KvadratAdapter());
 
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
-    if (!url || !await duplicatedRequest(url)) return false;
+    if (!url) return false;
     for(let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
             console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
@@ -54,29 +53,35 @@ function getAdapter(url: string): AbstractAdapter {
     return null;
 }
 
-async function duplicatedRequest(url: string): Promise<boolean> {
-    return await seen.exists(url);
-}
-
-seen.initialize()
-    .then(() => {
-        let crawler = new Crawler({
-            rateLimit: 1000,
-            maxConnections: 1000,
-            callback : async (error: Error, res: any, done: Function) => {
-                if(error){
-                    console.log(chalk.red(error));
-                } else{
-                    await queueLinks(res.$, crawler, adapters);
-                    const adapter = getAdapter(res.request.uri.href);
-                    if (adapter && adapter.validateListing(res.request.uri.href)) {
-                        let property = adapter.parseData(res);
+async function start() {
+    await mongoose.connect('mongodb://mongo:27017/properties', {useNewUrlParser: true});
+    let crawler = new Crawler({
+        rateLimit: 1000,
+        maxConnections: 1000,
+        callback: async (error: Error, res: any, done: Function) => {
+            if (error) {
+                console.log(chalk.red(error));
+            } else {
+                await queueLinks(res.$, crawler, adapters);
+                const adapter = getAdapter(res.request.uri.href);
+                if (adapter && adapter.validateListing(res.request.uri.href)) {
+                    try {
+                        let property = await adapter.parseData(res);
                         await adapter.store(property);
+                    } catch (e) {
+                        console.log(chalk.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);
                     }
                 }
-                done();
             }
-        });
-
-        initiateCrawl(crawler, adapters);
+            done();
+        }
     });
+
+    initiateCrawl(crawler, adapters);
+}
+
+start().then(() => {
+    console.log('Crawler started');
+}).catch(error => {
+    console.log(error);
+});

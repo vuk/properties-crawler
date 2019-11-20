@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import mongoose from "mongoose";
+import * as Joi from '@hapi/joi';
 
 dotenv.config();
 
@@ -19,6 +19,19 @@ export interface Property {
 export abstract class AbstractAdapter {
     abstract baseUrl: string;
     abstract seedUrl: string[];
+    private validationSchema = Joi.object()
+        .keys({
+            url: Joi.string().required(),
+            title: Joi.string().required(),
+            description: Joi.string(),
+            area: Joi.number().required(),
+            floor: Joi.number().required(),
+            floors: Joi.number().required(),
+            rooms: Joi.number().required(),
+            price: Joi.number().required(),
+            unitPrice: Joi.number().required(),
+            image: Joi.string()
+        }).unknown(true);
 
     abstract isType(url: string): AbstractAdapter;
 
@@ -67,8 +80,8 @@ export abstract class AbstractAdapter {
             this.getArea(entry) <= parseInt(process.env.MAX_AREA);
     }
 
-    parseData(entry: any): Property {
-        return {
+    async parseData(entry: any): Promise<Property> {
+        const property: Property = {
             url: this.getUrl(entry),
             title: this.getTitle(entry),
             description: this.getDescription(entry),
@@ -79,12 +92,13 @@ export abstract class AbstractAdapter {
             price: this.getPrice(entry),
             unitPrice: this.getUnitPrice(entry),
             image: this.getImage(entry),
-        }
+        };
+
+        await this.validationSchema.validateAsync(property);
+        return property;
     }
 
     async store(property: Property): Promise<any> {
-        await mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true});
-
         return null;
     }
 }
