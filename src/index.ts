@@ -1,11 +1,12 @@
+import dotenv from "dotenv";
 import {KvadratAdapter} from "./adapters/kvadrat.adapter";
 import {AbstractAdapter} from "./adapters/abstract-adapter";
-const chalk = require('chalk');
+import chalk from 'chalk';
 const Crawler = require("crawler");
 const seenreq = require('seenreq')
     , seen = new seenreq();
 
-require('dotenv').config();
+dotenv.config();
 
 let adapters: AbstractAdapter[] = [];
 adapters.push(new KvadratAdapter());
@@ -66,9 +67,7 @@ seen.initialize()
                 if(error){
                     console.log(chalk.red(error));
                 } else{
-                    let $ = res.$;
-                    // $ is Cheerio by default
-                    await queueLinks($, crawler, adapters);
+                    await queueLinks(res.$, crawler, adapters);
                     const adapter = getAdapter(res.request.uri.href);
                     if (adapter && adapter.validateListing(res.request.uri.href)) {
                         let property = adapter.parseData(res);

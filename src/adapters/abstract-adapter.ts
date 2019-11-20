@@ -1,4 +1,7 @@
-require('dotenv').config();
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+
+dotenv.config();
 
 export interface Property {
     url: string,
@@ -80,6 +83,8 @@ export abstract class AbstractAdapter {
     }
 
     async store(property: Property): Promise<any> {
+        await mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true});
+
         return null;
     }
 }
