@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import * as Joi from '@hapi/joi';
+import {PropertyModel} from "../utils/db";
 
 dotenv.config();
 
@@ -13,7 +14,8 @@ export interface Property {
     rooms: number,
     price: number,
     unitPrice: number,
-    image: string
+    image: string,
+    oldPrice?: number
 }
 
 export abstract class AbstractAdapter {
@@ -99,6 +101,11 @@ export abstract class AbstractAdapter {
     }
 
     async store(property: Property): Promise<any> {
-        return null;
+        let existingProperty = await PropertyModel.findOne({url: property.url}) as unknown as Property;
+        if (existingProperty && existingProperty.price !== property.price) {
+            property.oldPrice = existingProperty.price;
+        }
+        const propertyModel = new PropertyModel(property);
+        return await propertyModel.save();
     }
 }

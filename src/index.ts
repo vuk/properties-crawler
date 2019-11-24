@@ -3,7 +3,7 @@ import {KvadratAdapter} from "./adapters/kvadrat.adapter";
 import {AbstractAdapter} from "./adapters/abstract-adapter";
 import chalk from 'chalk';
 import Crawler from 'crawler';
-import mongoose from "mongoose";
+import {Database} from "./utils/db";
 
 dotenv.config();
 
@@ -54,7 +54,8 @@ function getAdapter(url: string): AbstractAdapter {
 }
 
 async function start() {
-    await mongoose.connect('mongodb://mongo:27017/properties', {useNewUrlParser: true});
+    const db = await Database.getInstance().connect();
+    console.log('[INFO] database connection', db);
     let crawler = new Crawler({
         rateLimit: 1000,
         maxConnections: 1000,
