@@ -4,16 +4,21 @@ import {AbstractAdapter} from "./adapters/abstract-adapter";
 import chalk from 'chalk';
 import Crawler from 'crawler';
 import {Database} from "./utils/db";
+import {NekretnineAdapter} from "./adapters/nekretnine.adapter";
 
 dotenv.config();
 
 let adapters: AbstractAdapter[] = [];
 adapters.push(new KvadratAdapter());
+adapters.push(new NekretnineAdapter());
 
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
     if (!url) return false;
     for(let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
+            if (url.indexOf(adapters[i].baseUrl) === -1) {
+                url = (adapters[i].baseUrl + url).replace('//', '/').replace('https:/', 'https://');
+            }
             console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
             crawler.queue(url);
             return true;
