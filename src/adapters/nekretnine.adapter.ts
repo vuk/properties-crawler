@@ -86,7 +86,7 @@ export class NekretnineAdapter extends AbstractAdapter {
     }
 
     validateLink(url: string): boolean {
-        return url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/') !== -1 || url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/lista/') !== -1;
+        return (url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/') !== -1 || url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/lista/') !== -1) && url.indexOf('?order') === -1;
     }
 
     validateListing(url: string): boolean {
