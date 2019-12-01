@@ -34,5 +34,7 @@ export const PropertyModel = mongoose.model('Property', new mongoose.Schema({
     rooms: Number,
     price: Number,
     unitPrice: Number,
-    image: String
+    image: String,
+    serviceType: Number,
+    type: Number
 }));

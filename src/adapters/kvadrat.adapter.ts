@@ -105,10 +105,30 @@ export class KvadratAdapter extends AbstractAdapter {
     }
 
     getServiceType(entry: any): ServiceType {
-        return undefined;
+        let serviceType = null;
+        entry.$('.property-d-table .col-md-6')
+            .last().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'usluga') {
+                    serviceType = entry.$(row).children('td').last().text().toLowerCase() === 'prodaja' ? ServiceType.SALE : ServiceType.RENT;
+                }
+            });
+        return serviceType;
     }
 
     getType(entry: any): PropertyType {
-        return undefined;
+        let propertyType = null;
+        entry.$('.property-d-table .col-md-6')
+            .first().children('table')
+            .first().children('tbody')
+            .first().children('tr')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('td').first().text().toLowerCase() === 'tip') {
+                    propertyType = entry.$(row).children('td').last().text().toLowerCase() === 'stan' ? PropertyType.APARTMENT : PropertyType.HOUSE;
+                }
+            });
+        return propertyType;
     }
 }

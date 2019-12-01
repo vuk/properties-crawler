@@ -94,10 +94,27 @@ export class NekretnineAdapter extends AbstractAdapter {
     }
 
     getServiceType(entry: any): ServiceType {
-        return undefined;
+        let serviceType = null;
+        entry.$('.base-inf')
+            .first().children('.row')
+            .first().children('.col-sm-6')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('transakcija') !== -1) {
+                    serviceType = entry.$(row).children('.dl-horozontal').children('dd').text().trim().toLowerCase() === 'prodaja' ? ServiceType.SALE : ServiceType.RENT;
+                }
+            });
+        return serviceType;
     }
 
     getType(entry: any): PropertyType {
-        return undefined;
+        let propertyType = null;
+        entry.$('.row.pb-3')
+            .children('.col-sm-6')
+            .each((rowIndex: number, row: any) => {
+                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('svrha korišćenja') !== -1) {
+                    propertyType = entry.$(row).children('.dl-horozontal').children('dd').text().toLowerCase() === 'stan' ? PropertyType.APARTMENT : PropertyType.HOUSE;
+                }
+            });
+        return propertyType;
     }
 }

@@ -62,8 +62,7 @@ async function start() {
     const db = await Database.getInstance().connect();
     console.log('[INFO] database connection', db);
     let crawler = new Crawler({
-        rateLimit: 1000,
-        maxConnections: 1000,
+        maxConnections: 1,
         callback: async (error: Error, res: any, done: Function) => {
             if (error) {
                 console.log(chalk.red(error));
@@ -73,6 +72,7 @@ async function start() {
                 if (adapter && adapter.validateListing(res.request.uri.href)) {
                     try {
                         let property = await adapter.parseData(res);
+                        console.log(property);
                         await adapter.store(property);
                     } catch (e) {
                         console.log(chalk.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);
