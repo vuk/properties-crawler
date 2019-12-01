@@ -1,4 +1,4 @@
-import {AbstractAdapter} from "./abstract-adapter";
+import {AbstractAdapter, PropertyType, ServiceType} from "./abstract-adapter";
 
 export class KvadratAdapter extends AbstractAdapter {
     baseUrl: string = 'http://www.kvadratnekretnine.com/';
@@ -102,5 +102,13 @@ export class KvadratAdapter extends AbstractAdapter {
 
     validateListing(url: string): boolean {
         return url.indexOf(this.baseUrl) !== -1 && url.indexOf('sr/listing/') !== -1;
+    }
+
+    getServiceType(entry: any): ServiceType {
+        return undefined;
+    }
+
+    getType(entry: any): PropertyType {
+        return undefined;
     }
 }

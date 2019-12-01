@@ -4,9 +4,21 @@ import {PropertyModel} from "../utils/db";
 
 dotenv.config();
 
+export enum PropertyType {
+    APARTMENT,
+    HOUSE,
+}
+
+export enum ServiceType {
+    SALE,
+    RENT,
+}
+
 export interface Property {
     url: string,
     title: string,
+    type: PropertyType,
+    serviceType: ServiceType,
     description: string,
     area: number,
     floor: number,
@@ -24,6 +36,8 @@ export abstract class AbstractAdapter {
     private validationSchema = Joi.object()
         .keys({
             url: Joi.string().required(),
+            type: Joi.number().required(),
+            serviceType: Joi.number().required(),
             title: Joi.string().required(),
             description: Joi.string(),
             area: Joi.number().required(),
@@ -56,6 +70,10 @@ export abstract class AbstractAdapter {
     abstract getTitle(entry: any): string;
 
     abstract getDescription(entry: any): string;
+
+    abstract getServiceType(entry: any): ServiceType;
+
+    abstract getType(entry: any): PropertyType;
 
     getUrl(entry: any): string {
         return entry.request.uri.href;
@@ -94,6 +112,8 @@ export abstract class AbstractAdapter {
             price: this.getPrice(entry),
             unitPrice: this.getUnitPrice(entry),
             image: this.getImage(entry),
+            type: this.getType(entry),
+            serviceType: this.getServiceType(entry),
         };
 
         await this.validationSchema.validateAsync(property);

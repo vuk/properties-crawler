@@ -1,4 +1,4 @@
-import {AbstractAdapter} from "./abstract-adapter";
+import {AbstractAdapter, PropertyType, ServiceType} from "./abstract-adapter";
 
 export class NekretnineAdapter extends AbstractAdapter {
     baseUrl: string = 'https://www.nekretnine.rs/';
@@ -91,5 +91,13 @@ export class NekretnineAdapter extends AbstractAdapter {
 
     validateListing(url: string): boolean {
         return url.indexOf(this.baseUrl) !== -1 && url.indexOf('/stambeni-objekti/stanovi/') !== -1 && url.indexOf('/izdavanje-prodaja/') === -1 && url.indexOf('/grad/') === -1 && url.indexOf('/po-stranici/') === -1;
+    }
+
+    getServiceType(entry: any): ServiceType {
+        return undefined;
+    }
+
+    getType(entry: any): PropertyType {
+        return undefined;
     }
 }
