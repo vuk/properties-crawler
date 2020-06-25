@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
-import {KvadratAdapter} from "./adapters/kvadrat.adapter";
-import {AbstractAdapter} from "./adapters/abstract-adapter";
+import { KvadratAdapter } from "./adapters/kvadrat.adapter";
+import { AbstractAdapter } from "./adapters/abstract-adapter";
 import chalk from 'chalk';
 import Crawler from 'crawler';
-import {Database} from "./utils/db";
-import {NekretnineAdapter} from "./adapters/nekretnine.adapter";
+import { Database } from "./utils/db";
+import { NekretnineAdapter } from "./adapters/nekretnine.adapter";
 
 dotenv.config();
 
@@ -14,7 +14,7 @@ adapters.push(new NekretnineAdapter());
 
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
     if (!url) return false;
-    for(let i = 0; i < adapters.length; i++) {
+    for (let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
             if (url.indexOf(adapters[i].baseUrl) === -1) {
                 url = (adapters[i].baseUrl + url).replace('//', '/').replace('https:/', 'https://');
@@ -29,7 +29,7 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
 
 async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Promise<void> {
     let uniqueLinks: string[] = [];
-    $('a').each( async (index: number, element: any) => {
+    $('a').each(async (index: number, element: any) => {
         let link = $(element).attr('href');
         if (uniqueLinks.indexOf(link) === -1) {
             uniqueLinks.push(link);
@@ -39,7 +39,7 @@ async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Pr
 }
 
 function initiateCrawl(crawler: any, adapters: AbstractAdapter[]): void {
-    for(let i = 0; i < adapters.length; i++) {
+    for (let i = 0; i < adapters.length; i++) {
         console.log(chalk.green('[INFO] ') + 'Queue ' + adapters[i].baseUrl);
         console.log(chalk.green('[INFO] ') + 'Queue ' + adapters[i].seedUrl);
         crawler.queue(adapters[i].baseUrl);
@@ -49,7 +49,7 @@ function initiateCrawl(crawler: any, adapters: AbstractAdapter[]): void {
 
 function getAdapter(url: string): AbstractAdapter {
     if (!url) return null;
-    for(let i = 0; i < adapters.length; i++) {
+    for (let i = 0; i < adapters.length; i++) {
         const adapter = adapters[i].isType(url);
         if (adapter) {
             return adapter;
