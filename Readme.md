@@ -6,6 +6,7 @@ Application is intended to crawl realestate ads from different websites and appl
 
 * Database: DynamoDB by Amazon
 * Framework: NodeJS
+* Backend: Lambda functions (with Serverless)
 
 ## Development 
 
@@ -28,9 +29,6 @@ NO_ATTIC=true
 NO_BASEMENT=true
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
-MONGO_PASSWORD=example
-MONGO_DB=properties
-MONGO_PORT=27017
-MONGO_USER=root
-MONGO_HOST=mongo
+AWS_REGION=
+PROPERTY_TABLE=
 ```

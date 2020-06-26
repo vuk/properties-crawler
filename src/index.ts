@@ -1,16 +1,14 @@
 import dotenv from "dotenv";
-import { KvadratAdapter } from "./adapters/kvadrat.adapter";
 import { AbstractAdapter } from "./adapters/abstract-adapter";
 import chalk from 'chalk';
 import Crawler from 'crawler';
 import { Database } from "./utils/db";
-import { NekretnineAdapter } from "./adapters/nekretnine.adapter";
+import adapterList from './adapters/adapter.enum';
 
 dotenv.config();
 
 let adapters: AbstractAdapter[] = [];
-adapters.push(new KvadratAdapter());
-adapters.push(new NekretnineAdapter());
+adapterList.map(adapter => adapters.push(new adapter()));
 
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
     if (!url) return false;

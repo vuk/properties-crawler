@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import * as Joi from '@hapi/joi';
-import { PropertyModel } from "../utils/db";
+import { Database } from "../utils/db";
 
 dotenv.config();
 
@@ -122,11 +122,7 @@ export abstract class AbstractAdapter {
     }
 
     async store(property: Property): Promise<any> {
-        let existingProperty = await PropertyModel.findOne({ url: property.url }) as unknown as Property;
-        if (existingProperty && existingProperty.price !== property.price) {
-            property.oldPrice = existingProperty.price;
-        }
-        const propertyModel = new PropertyModel(property);
-        return await propertyModel.save();
+        let db = Database.getInstance();
+        await db.putProperty(property);
     }
 }
