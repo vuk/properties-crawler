@@ -1,0 +1,24 @@
+Resources:
+    PropertiesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.propertiesTableName}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: url
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: url
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: itemIdGSI
+            KeySchema:
+              - AttributeName: itemId
+                KeyType: HASH
+            Projection:
+              ProjectionType: KEYS_ONLY
+  
