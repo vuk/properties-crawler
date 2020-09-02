@@ -38,8 +38,19 @@ provider:
 
 custom:
     dynamodb:
-    stages:
+      # If you only want to use DynamoDB Local in some stages, declare them here
+      stages:
         - dev
+      start:
+        port: 8000
+        inMemory: true
+        heapInitial: 200m
+        heapMax: 1g
+        migrate: true
+        seed: true
+        convertEmptyValues: true
+      # Uncomment only if you already have a DynamoDB running locally
+      # noStart: true
     start:
         port: ${env:DYNAMODB_LOCAL_PORT, '8080'}
         inMemory: true
@@ -67,12 +78,11 @@ functions:
                 cors: true
 
 plugins:
-    #- serverless-api-gateway-caching
-    #- serverless-domain-manager
     - serverless-webpack
     - serverless-pseudo-parameters
     - serverless-prune-plugin
+    - serverless-dynamodb-local
+    - serverless-offline
 
 resources:
     - ${file(resources/resource.yml)}
-  

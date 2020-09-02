@@ -6,19 +6,26 @@ Resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: url
+          - AttributeName: propertyUrl
             AttributeType: S
+          - AttributeName: propertyType
+            AttributeType: N
         KeySchema:
           - AttributeName: id
             KeyType: HASH
-          - AttributeName: url
+          - AttributeName: propertyType
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         GlobalSecondaryIndexes:
-          - IndexName: itemIdGSI
+          - IndexName: itemTypeGSI
             KeySchema:
-              - AttributeName: itemId
+              - AttributeName: propertyType
                 KeyType: HASH
             Projection:
-              ProjectionType: KEYS_ONLY
-  
+              ProjectionType: ALL
+          - IndexName: urlGSI
+            KeySchema:
+              - AttributeName: propertyUrl
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL

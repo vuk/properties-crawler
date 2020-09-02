@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import * as Joi from '@hapi/joi';
 import { Database } from "../utils/db";
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -16,9 +17,10 @@ export enum ServiceType {
 }
 
 export interface Property {
-    url: string,
+    id: string;
+    propertyUrl: string,
     title: string,
-    type: PropertyType,
+    propertyType: PropertyType,
     serviceType: ServiceType,
     description: string,
     area: number,
@@ -36,8 +38,8 @@ export abstract class AbstractAdapter {
     abstract seedUrl: string[];
     private validationSchema = Joi.object()
         .keys({
-            url: Joi.string().required(),
-            type: Joi.number().required(),
+            propertyUrl: Joi.string().required(),
+            propertyType: Joi.number().required(),
             serviceType: Joi.number().required(),
             title: Joi.string().required(),
             description: Joi.string(),
@@ -103,7 +105,8 @@ export abstract class AbstractAdapter {
 
     async parseData(entry: any): Promise<Property> {
         const property: Property = {
-            url: this.getUrl(entry),
+            id: uuidv4(),
+            propertyUrl: this.getUrl(entry),
             title: this.getTitle(entry),
             description: this.getDescription(entry),
             area: this.getArea(entry),
@@ -113,7 +116,7 @@ export abstract class AbstractAdapter {
             price: this.getPrice(entry),
             unitPrice: this.getUnitPrice(entry),
             image: this.getImage(entry),
-            type: this.getType(entry),
+            propertyType: this.getType(entry),
             serviceType: this.getServiceType(entry),
         };
 

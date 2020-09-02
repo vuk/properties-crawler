@@ -1,5 +1,6 @@
-import { DocumentClient } from 'aws-sdk/clients/dynamodb';
+import {DocumentClient} from 'aws-sdk/clients/dynamodb';
 import { Property } from '../adapters/abstract-adapter';
+import QueryInput = DocumentClient.QueryInput;
 
 export class Database {
     private static instance: Database;
@@ -16,9 +17,11 @@ export class Database {
     public async connect(): Promise<any> {
         if (process.env.IS_OFFLINE) {
             this.client = new DocumentClient({
-                region: process.env.AWS_REGION,
-                endpoint: `http://localhost:${process.env.AWS_LOCAL_PORT}`,
-            });
+                region: 'localhost',
+                endpoint: 'http://localhost:8000',
+                accessKeyId: 'DEFAULT_ACCESS_KEY',  // needed if you don't have aws credentials at all in env
+                secretAccessKey: 'DEFAULT_SECRET' // needed if you don't have aws credentials at all in env
+            })
         } else {
             this.client = new DocumentClient({
                 secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -29,9 +32,9 @@ export class Database {
     }
 
     async putProperty(property: Property): Promise<any> {
-        let existing = await this.getItemByURL(property.url);
+        let existing = await this.getItemByURL(property.propertyUrl);
         if (!existing) {
-            existing = property;
+           existing = property;
         }
         existing = this.prepareItem(existing);
         const params = {
@@ -73,23 +76,21 @@ export class Database {
     async getItemById(id: string): Promise<Property> {
         const params: any = {
             TableName: process.env.PROPERTY_TABLE,
-            KeyConditionExpression: 'id= :id',
-            ExpressionAttributeValues: {
-                ':id': id,
-            },
+            Key: id
         };
 
-        const dbResponse = await this.client.query(params).promise();
-        if (dbResponse.Items.length === 0) {
+        const dbResponse = await this.client.get(params).promise();
+        if (!dbResponse.Item) {
             return null;
         }
-        return dbResponse.Items[0] as Property;
+        return this.cleanItem(dbResponse.Item) as Property;
     }
 
     async getItemByURL(url: string): Promise<Property> {
-        const params: any = {
+        const params: QueryInput = {
             TableName: process.env.PROPERTY_TABLE,
-            KeyConditionExpression: 'url= :url',
+            IndexName: 'urlGSI',
+            KeyConditionExpression: 'propertyUrl= :url',
             ExpressionAttributeValues: {
                 ':url': url,
             },
@@ -99,6 +100,6 @@ export class Database {
         if (dbResponse.Items.length === 0) {
             return null;
         }
-        return dbResponse.Items[0] as Property;
+        return this.cleanItem(dbResponse.Items[0]) as Property;
     }
 }

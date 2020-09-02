@@ -9,7 +9,8 @@
     "chalk": "^3.0.0",
     "cheerio": "^1.0.0-rc.3",
     "crawler": "^1.2.2",
-    "dotenv": "^8.2.0"
+    "dotenv": "^8.2.0",
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
     "@types/chalk": "^2.2.0",
@@ -28,6 +29,7 @@
   "scripts": {
     "build": "npx webpack",
     "start": "node dist/index.js",
+    "start:offline": "IS_OFFLINE=true ts-node src/index.ts",
     "start:daemon": "nodemon dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "run-s build start",

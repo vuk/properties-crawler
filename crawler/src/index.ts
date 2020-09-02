@@ -57,8 +57,7 @@ function getAdapter(url: string): AbstractAdapter {
 }
 
 async function start() {
-    const db = await Database.getInstance().connect();
-    console.log('[INFO] database connection', db);
+    await Database.getInstance().connect();
     let crawler = new Crawler({
         maxConnections: 1,
         callback: async (error: Error, res: any, done: Function) => {
