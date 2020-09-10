@@ -4,13 +4,6 @@ export class NekretnineAdapter extends AbstractAdapter {
     baseUrl: string = 'https://www.nekretnine.rs/';
     seedUrl: string[] = ['https://www.nekretnine.rs/stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/lista/po-stranici/10/'];
 
-    isType(url: string): NekretnineAdapter {
-        if (url.indexOf(this.baseUrl) !== -1) {
-            return this;
-        }
-        return null;
-    }
-
     getArea(entry: any): number {
         let area = 0;
         entry.$('.base-inf')

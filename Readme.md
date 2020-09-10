@@ -1,6 +1,6 @@
 # Properties crawler
 
-Application is intended to crawl realestate ads from different websites and apply identical filters to all of them collecting fitting ads and sendin an email 
+Application is intended to crawl realestate ads from different websites and apply identical filters to all of them collecting fitting ads and send an email 
 
 ## Stack
 
@@ -10,9 +10,9 @@ Application is intended to crawl realestate ads from different websites and appl
 
 ## Development 
 
-Run docker compose 
+To run database run
 
-`$ docker compose up`
+``
 
 ## Environment
 

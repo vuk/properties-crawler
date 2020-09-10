@@ -52,7 +52,12 @@ export abstract class AbstractAdapter {
             image: Joi.string()
         }).unknown(true);
 
-    abstract isType(url: string): AbstractAdapter;
+    isType(url: string): AbstractAdapter {
+        if (url.indexOf(this.baseUrl) !== -1) {
+            return this;
+        }
+        return null;
+    }
 
     abstract getRooms(entry: any): number;
 

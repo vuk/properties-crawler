@@ -34,6 +34,9 @@ export const handler = async () => {
     let result = await client.query(params).promise();
     return {
         statusCode: 200,
-        body: JSON.stringify(result.Items)
+        body: JSON.stringify({
+            items: result.Items,
+            lastEvaluatedKey: result.LastEvaluatedKey || null
+        })
     }
 };

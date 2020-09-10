@@ -20,6 +20,8 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
             console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
             crawler.queue(url);
             return true;
+        } else {
+            console.log(chalk.green('[INFO] ') + 'Don\'t Queue URL ' + url);
         }
     }
     return false;
@@ -69,7 +71,6 @@ async function start() {
                 if (adapter && adapter.validateListing(res.request.uri.href)) {
                     try {
                         let property = await adapter.parseData(res);
-                        console.log(property);
                         await adapter.store(property);
                     } catch (e) {
                         console.log(chalk.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);

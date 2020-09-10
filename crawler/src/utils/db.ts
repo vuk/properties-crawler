@@ -1,4 +1,4 @@
-import {DocumentClient} from 'aws-sdk/clients/dynamodb';
+import {DocumentClient, PutItemInput} from 'aws-sdk/clients/dynamodb';
 import { Property } from '../adapters/abstract-adapter';
 import QueryInput = DocumentClient.QueryInput;
 
@@ -39,7 +39,7 @@ export class Database {
         existing = this.prepareItem(existing);
         const params = {
             TableName: process.env.PROPERTY_TABLE,
-            Item: existing,
+            Item: existing as any,
         };
 
         return this.client.put(params).promise();
