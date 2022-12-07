@@ -15,7 +15,7 @@
     "@typescript-eslint/parser": "^2.13.0",
     "aws-sdk": "^2.706.0",
     "npx": "^10.2.2",
-    "serverless": "^1.74.0",
+    "serverless": "^3.25.1",
     "serverless-domain-manager": "^3.3.0",
     "serverless-dynamodb-local": "^0.2.39",
     "serverless-offline": "^6.7.0",
