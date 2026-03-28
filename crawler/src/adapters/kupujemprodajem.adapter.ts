@@ -67,6 +67,25 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+/** Location line under `.product-details-desc`: spans with `data-code` (grad, lokacija, …). */
+type KpLocationSpan = { code: string; text: string };
+
+function parseProductDetailsDescSpans(html: string): KpLocationSpan[] {
+  const divMatch = html.match(
+    /<div\b[^>]*\bclass="[^"]*\bproduct-details-desc\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i
+  );
+  if (!divMatch) return [];
+  const inner = divMatch[1];
+  const out: KpLocationSpan[] = [];
+  const re = /<span[^>]*\bdata-code="([^"]+)"[^>]*>([\s\S]*?)<\/span>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(inner)) !== null) {
+    const text = stripHtml(m[2]).trim();
+    if (text) out.push({ code: m[1], text });
+  }
+  return out;
+}
+
 /** "66 m²", "65,71 m²" → square metres */
 function parseSquareMetres(label: string): number {
   const m = label.replace(/\s/g, " ").match(/([\d.,]+)\s*m/i);
@@ -141,6 +160,13 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
     const href = entry.request?.uri?.href ?? "";
     entry._kpAdParsed = adFromBody(body, href);
     return entry._kpAdParsed;
+  }
+
+  private productDetailsDescSpans(entry: any): KpLocationSpan[] {
+    if (entry._kpProductDetailsDescSpans !== undefined) return entry._kpProductDetailsDescSpans;
+    const body = typeof entry.body === "string" ? entry.body : "";
+    entry._kpProductDetailsDescSpans = parseProductDetailsDescSpans(body);
+    return entry._kpProductDetailsDescSpans;
   }
 
   getArea(entry: any): number {
@@ -255,6 +281,10 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
+    const descParts = this.productDetailsDescSpans(entry).map((s) => s.text);
+    const fromDesc = descParts.join(" - ").trim();
+    if (fromDesc) return fromDesc;
+
     const ad = this.ad(entry);
     const parts: string[] = [];
     if (ad) {
@@ -276,6 +306,22 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
   }
 
   getLocation(entry: any): SerbianMunicipality {
+    const spans = this.productDetailsDescSpans(entry);
+    const byCode = new Map(spans.map((s) => [s.code, s.text] as const));
+    /** Prefer municipality (`lokacija`) over city (`grad`) for Belgrade city municipalities. */
+    const descCodes = ["lokacija", "opstina", "grad", "mesto", "mikrolokacija", "ulica"];
+    for (const code of descCodes) {
+      const v = byCode.get(code);
+      if (v) {
+        const r = resolveSerbianMunicipality(v);
+        if (r !== SerbianMunicipality.UNKNOWN) return r;
+      }
+    }
+    for (const s of spans) {
+      const r = resolveSerbianMunicipality(s.text);
+      if (r !== SerbianMunicipality.UNKNOWN) return r;
+    }
+
     const ad = this.ad(entry);
     if (ad) {
       for (const code of [
