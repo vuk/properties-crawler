@@ -13,6 +13,10 @@ type HaloClassified = {
   sprat_od_s?: string;
   cena_d?: number;
   tip_nekretnine_s?: string;
+  /** Location strings live in OtherFields on the wire; merged into this shape by parseClassifiedFromBody. */
+  grad_s?: string;
+  lokacija_s?: string;
+  mikrolokacija_s?: string;
 };
 
 const CLASSIFIED_MARKER = "QuidditaEnvironment.CurrentClassified=";
@@ -109,6 +113,9 @@ function stripOpstinaPrefix(s: string): string {
   return s.replace(/^\s*opština\s+/i, "").replace(/^\s*opstina\s+/i, "").trim();
 }
 
+/** Default span text before Halo's inline scripts replace it with grad_s / lokacija_s / mikrolokacija_s. */
+const HALO_LOCATION_PLACEHOLDER_LABELS = new Set(["mesto", "deo mesta", "lokacija"]);
+
 function parseProductDetailsDesc($: any): HaloProductDetailsLocation | null {
   if (!$ || typeof $ !== "function") return null;
   const root = $(".product-details-desc").first();
@@ -118,6 +125,7 @@ function parseProductDetailsDesc($: any): HaloProductDetailsLocation | null {
     const code = $(el).attr("data-code");
     const text = $(el).text().replace(/\s+/g, " ").trim();
     if (!text) return;
+    if (HALO_LOCATION_PLACEHOLDER_LABELS.has(text.toLowerCase())) return;
     if (code === "grad") out.grad = text;
     else if (code === "lokacija") out.lokacija = text;
     else if (code === "mikrolokacija") out.mikrolokacija = text;
@@ -150,6 +158,21 @@ export class HalooglasiAdapter extends AbstractAdapter {
     const $ = entry.$;
     entry._haloProductDetailsLoc = $ ? parseProductDetailsDesc($) : null;
     return entry._haloProductDetailsLoc;
+  }
+
+  /** Real location strings from embedded JSON (not DOM placeholders). */
+  private locationFromClassified(c: HaloClassified | null): HaloProductDetailsLocation | null {
+    if (!c) return null;
+    const grad = typeof c.grad_s === "string" ? c.grad_s.replace(/\s+/g, " ").trim() : "";
+    const lokacija = typeof c.lokacija_s === "string" ? c.lokacija_s.replace(/\s+/g, " ").trim() : "";
+    const mikrolokacija =
+      typeof c.mikrolokacija_s === "string" ? c.mikrolokacija_s.replace(/\s+/g, " ").trim() : "";
+    if (!grad && !lokacija && !mikrolokacija) return null;
+    return { grad: grad || undefined, lokacija: lokacija || undefined, mikrolokacija: mikrolokacija || undefined };
+  }
+
+  private resolvedLocation(entry: any): HaloProductDetailsLocation | null {
+    return this.locationFromClassified(this.classified(entry)) ?? this.productDetailsLocation(entry);
   }
 
   getArea(entry: any): number {
@@ -250,7 +273,7 @@ export class HalooglasiAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
-    const d = this.productDetailsLocation(entry);
+    const d = this.resolvedLocation(entry);
     if (d) {
       const parts = [d.grad, d.lokacija, d.mikrolokacija].filter(Boolean);
       if (parts.length > 0) return parts.join(" - ");
@@ -273,7 +296,7 @@ export class HalooglasiAdapter extends AbstractAdapter {
   }
 
   getLocation(entry: any): SerbianMunicipality {
-    const d = this.productDetailsLocation(entry);
+    const d = this.resolvedLocation(entry);
     if (d) {
       const joined = [d.lokacija, d.grad, d.mikrolokacija].filter(Boolean).join(" ");
       let r = resolveSerbianMunicipality(joined);

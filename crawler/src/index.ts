@@ -32,15 +32,27 @@ function isNonCrawlableHref(raw: string | undefined): boolean {
     return false;
 }
 
+function resolveAdapterSeedUrl(raw: string, baseUrl: string): string {
+    const t = raw.trim();
+    if (t === "") return t;
+    if (/^https?:\/\//i.test(t)) return t;
+    try {
+        return new URL(t, baseUrl).href;
+    } catch {
+        return t;
+    }
+}
+
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
     if (isNonCrawlableHref(url)) return false;
     for (let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
-            if (url.indexOf(adapters[i].baseUrl) === -1) {
-                url = (adapters[i].baseUrl + url).replace('//', '/').replace('https:/', 'https://');
+            let next = url.trim();
+            if (next.indexOf(adapters[i].baseUrl) === -1 && !/^https?:\/\//i.test(next)) {
+                next = resolveAdapterSeedUrl(next, adapters[i].baseUrl);
             }
-            console.log(p.green('[INFO] ') + 'Queue URL ' + url);
-            crawler.queue(url);
+            console.log(p.green('[INFO] ') + 'Queue URL ' + next);
+            crawler.queue(next);
             return true;
         }
     }
@@ -93,6 +105,10 @@ async function start() {
     let crawler = new Crawler({
         maxConnections,
         rateLimit,
+        headers: {
+            "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        },
         callback: async (error: Error, res: any, done: Function) => {
             if (error) {
                 console.log(p.red(String(error)));

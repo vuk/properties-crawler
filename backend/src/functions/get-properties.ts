@@ -27,7 +27,8 @@ function rowToItem(row: Record<string, unknown>) {
         title: row.title,
         propertyType: row.property_type,
         serviceType: row.service_type,
-        description: row.description,
+        description:
+            row.description == null ? '' : String(row.description),
         area: row.area,
         floor: row.floor,
         floors: row.floors,

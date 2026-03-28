@@ -17,6 +17,11 @@ function parseFloatLoose(raw: string | undefined | null): number {
   return m ? parseFloat(m[0]) : 0;
 }
 
+/** Collapse whitespace and NBSP so stored text matches visible copy and trims reliably. */
+function normalizeListingText(raw: string): string {
+  return raw.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
 /** "4 / 8", "PR / 4", "Prizemlje" → floor, floors */
 function parseSpratLine(text: string): { floor: number; floors: number } {
   const t = text.trim().toLowerCase();
@@ -47,6 +52,11 @@ export class NekretnineAdapter extends AbstractAdapter {
     "https://www.nekretnine.rs/stambeni-objekti/stanovi/izdavanje-prodaja/izdavanje/lista/po-stranici/20/",
   ];
 
+  /** Sticky sidebar line, e.g. "Beograd, Lion" — primary source for raw_location and LAU mapping. */
+  private stickyBoxLocationText(entry: any): string {
+    return normalizeListingText(entry.$(".stickyBox__Location").first().text());
+  }
+
   private labelValue(entry: any, label: string): string {
     const needle = label.toLowerCase();
     let found = "";
@@ -72,7 +82,22 @@ export class NekretnineAdapter extends AbstractAdapter {
   }
 
   getDescription(entry: any): string {
-    return entry.$(".cms-content-inner").text().trim();
+    const $ = entry.$;
+    const selectors = [
+      ".property__description .cms-content-inner",
+      "#opis .cms-content-inner",
+      "section#opis .cms-content-inner",
+      ".tabSectionContent#opis .cms-content-inner",
+    ];
+    for (const sel of selectors) {
+      const t = normalizeListingText($(sel).first().text());
+      if (t.length > 0) return t;
+    }
+    const loose = normalizeListingText($(".cms-content-inner").first().text());
+    if (loose.length > 0) return loose;
+    const $block = $(".property__description").first().clone();
+    $block.find("h2, .show-more, [data-show-more-btn], span.show-more").remove();
+    return normalizeListingText($block.text());
   }
 
   getFloor(entry: any): number {
@@ -230,6 +255,8 @@ export class NekretnineAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
+    const sticky = this.stickyBoxLocationText(entry);
+    if (sticky) return sticky;
     const blob = [
       this.labelValue(entry, "lokacija"),
       this.labelValue(entry, "grad"),
@@ -246,7 +273,13 @@ export class NekretnineAdapter extends AbstractAdapter {
   }
 
   getLocation(entry: any): SerbianMunicipality {
+    const sticky = this.stickyBoxLocationText(entry);
+    if (sticky) {
+      const fromSticky = resolveSerbianMunicipality(sticky);
+      if (fromSticky !== SerbianMunicipality.UNKNOWN) return fromSticky;
+    }
     const blob = [
+      sticky,
       this.labelValue(entry, "lokacija"),
       this.labelValue(entry, "grad"),
       this.labelValue(entry, "mesto"),

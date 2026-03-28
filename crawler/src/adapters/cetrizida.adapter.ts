@@ -138,6 +138,17 @@ export class CetrizidaAdapter extends AbstractAdapter {
         return parseEuroPrice(title) || parseEuroPrice(desc);
     }
 
+    getUnitPrice(entry: any): number {
+        const area = this.getArea(entry);
+        const price = this.getPrice(entry);
+        if (!Number.isFinite(area) || area <= 0 || !Number.isFinite(price)) {
+            return 0;
+        }
+        const u = price / area;
+        if (!Number.isFinite(u)) return 0;
+        return Math.min(u, Number.MAX_SAFE_INTEGER);
+    }
+
     getRooms(entry: any): number {
         const href = this.getUrl(entry);
         const segs = this.listingPathSegments(href);
@@ -210,10 +221,15 @@ export class CetrizidaAdapter extends AbstractAdapter {
 
     getLocation(entry: any): SerbianMunicipality {
         const segs = this.listingPathSegments(this.getUrl(entry));
-        if (segs.length >= 2) {
-            const fromSlug = resolveSerbianMunicipality(segs[1].replace(/-/g, " "));
+        const slugHint =
+            segs.length >= 2 ? segs[1].replace(/-/g, " ").trim() : "";
+        if (slugHint) {
+            const fromSlug = resolveSerbianMunicipality(slugHint);
             if (fromSlug !== SerbianMunicipality.UNKNOWN) return fromSlug;
         }
-        return super.getLocation(entry);
+        const merged = `${slugHint} ${this.getTitle(entry)} ${this.getDescription(entry)}`
+            .replace(/\s+/g, " ")
+            .trim();
+        return resolveSerbianMunicipality(merged);
     }
 }

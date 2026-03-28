@@ -9,18 +9,12 @@ const placeholder =
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400"><rect fill="#e8e4df" width="640" height="400"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9a948c" font-family="system-ui,sans-serif" font-size="18">No photo</text></svg>`,
   )
 
-const READ_MORE_WORD_THRESHOLD = 40
+/** Max characters shown before "read more" (including the trailing ellipsis when truncated). */
+const DESCRIPTION_PREVIEW_MAX_VISIBLE = 200
 
-function countWords(text: string): number {
-  const t = text.trim()
-  if (!t) return 0
-  return t.split(/\s+/).filter(Boolean).length
-}
-
-function firstNWords(text: string, n: number): string {
-  const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= n) return text.trim()
-  return `${words.slice(0, n).join(' ')}…`
+function previewDescription(text: string, maxVisible: number): string {
+  if (text.length <= maxVisible) return text
+  return `${text.slice(0, maxVisible - 1)}…`
 }
 
 interface Props {
@@ -38,9 +32,14 @@ export function PropertyCard({ property }: Props) {
     property.rawLocation?.trim() ||
     (property.location ? `Lokacija #${property.location}` : 'Lokacija nepoznata')
 
-  const description = property.description.trim()
-  const wordCount = countWords(description)
-  const needsReadMore = wordCount > READ_MORE_WORD_THRESHOLD
+  const description = String(property.description ?? '')
+    .replace(/\u00a0/g, ' ')
+    .trim()
+  const needsReadMore = description.length > DESCRIPTION_PREVIEW_MAX_VISIBLE
+  const descriptionCollapsedPreview = previewDescription(
+    description,
+    DESCRIPTION_PREVIEW_MAX_VISIBLE,
+  )
 
   useEffect(() => {
     if (!needsReadMore || !descriptionExpanded) return
@@ -55,9 +54,6 @@ export function PropertyCard({ property }: Props) {
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [needsReadMore, descriptionExpanded])
-
-  const descriptionToShow =
-    !needsReadMore || descriptionExpanded ? description : firstNWords(description, READ_MORE_WORD_THRESHOLD)
 
   const typeLabel =
     property.propertyType === 0 ? 'Stan' : property.propertyType === 1 ? 'Kuća' : null
@@ -86,8 +82,6 @@ export function PropertyCard({ property }: Props) {
           : ''
 
   const originLabel = propertyOriginLabel(property.propertyUrl)
-
-  const excerptCollapsed = firstNWords(description, READ_MORE_WORD_THRESHOLD)
 
   return (
     <article
@@ -142,7 +136,7 @@ export function PropertyCard({ property }: Props) {
             {needsReadMore && descriptionExpanded ? (
               <>
                 <div className="card__desc-measure" aria-hidden>
-                  <p className="card__excerpt">{excerptCollapsed}</p>
+                  <p className="card__excerpt">{descriptionCollapsedPreview}</p>
                   <button type="button" className="card__desc-toggle" tabIndex={-1}>
                     Pročitaj više
                   </button>
@@ -161,7 +155,9 @@ export function PropertyCard({ property }: Props) {
               </>
             ) : (
               <>
-                <p className="card__excerpt">{descriptionToShow}</p>
+                <p className="card__excerpt">
+                  {needsReadMore ? descriptionCollapsedPreview : description}
+                </p>
                 {needsReadMore ? (
                   <button
                     type="button"
