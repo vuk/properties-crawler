@@ -20,6 +20,26 @@ function crawlerRateLimitMs(): number {
     return 0;
 }
 
+/** node-crawler Bottleneck limiter name for 4zida.rs (see queueCrawlUrl). */
+const ZIDA_CRAWLER_LIMITER = "4zida.rs";
+/** Max request starts per minute to 4zida (429 mitigation). Bottleneck uses min gap between starts. */
+const ZIDA_REQUESTS_PER_MINUTE = 10;
+const ZIDA_RATE_LIMIT_MS = Math.ceil(60_000 / ZIDA_REQUESTS_PER_MINUTE);
+
+function is4zidaHostUrl(uri: string): boolean {
+    const t = uri.trim();
+    return t.length > 0 && t.includes("4zida.rs");
+}
+
+/** Queue a URL, routing 4zida through a dedicated rate-limited limiter. */
+function queueCrawlUrl(crawler: InstanceType<typeof Crawler>, uri: string): void {
+    if (is4zidaHostUrl(uri)) {
+        crawler.queue({ uri: uri.trim(), limiter: ZIDA_CRAWLER_LIMITER });
+    } else {
+        crawler.queue(uri);
+    }
+}
+
 let adapters: AbstractAdapter[] = [];
 adapterList.map(adapter => adapters.push(new adapter()));
 
@@ -52,7 +72,7 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
                 next = resolveAdapterSeedUrl(next, adapters[i].baseUrl);
             }
             console.log(p.green('[INFO] ') + 'Queue URL ' + next);
-            crawler.queue(next);
+            queueCrawlUrl(crawler, next);
             return true;
         }
     }
@@ -73,12 +93,14 @@ async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Pr
     });
 }
 
-function initiateCrawl(crawler: any, adapters: AbstractAdapter[]): void {
+function initiateCrawl(crawler: InstanceType<typeof Crawler>, adapters: AbstractAdapter[]): void {
     for (let i = 0; i < adapters.length; i++) {
         console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].baseUrl);
         console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].seedUrl);
-        crawler.queue(adapters[i].baseUrl);
-        crawler.queue(adapters[i].seedUrl);
+        queueCrawlUrl(crawler, adapters[i].baseUrl);
+        for (const seed of adapters[i].seedUrl) {
+            queueCrawlUrl(crawler, seed);
+        }
     }
 }
 
@@ -127,11 +149,28 @@ async function start() {
                     } catch (e) {
                         console.log(p.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);
                     }
+                } else if (adapter) {
+                    const href = res.request.uri.href;
+                    if (status !== undefined && status >= 400) {
+                        console.log(
+                            p.red('[LISTING ERROR] ') + `HTTP ${status} ${href}`
+                        );
+                    } else if (!adapter.validateListing(href)) {
+                        console.log(
+                            p.red('[LISTING ERROR] ') + `validateListing rejected ${href}`
+                        );
+                    }
                 }
             }
             done();
         }
     });
+
+    crawler.setLimiterProperty(ZIDA_CRAWLER_LIMITER, "rateLimit", ZIDA_RATE_LIMIT_MS);
+    console.log(
+        p.cyan("[INFO] ") +
+            `4zida.rs: dedicated limiter ${ZIDA_CRAWLER_LIMITER}, ~${ZIDA_REQUESTS_PER_MINUTE}/min (${ZIDA_RATE_LIMIT_MS}ms between starts)`
+    );
 
     initiateCrawl(crawler, adapters);
 }

@@ -17,9 +17,10 @@ function pathSegments(url: string, baseUrl: string): string[] {
 }
 
 function detailHtmlBlock(entry: any): string {
-    const html = entry.$("#detailWS").html() || "";
-    const cut = html.split('<div id="aboutAuthor">')[0];
-    return cut || html;
+    const $ = entry.$;
+    const raw = $("#listing_body").html() || $("#detailWS").html() || "";
+    const cut = raw.split('<div id="aboutAuthor">')[0];
+    return cut || raw;
 }
 
 function valueAfterStrongLabel(html: string, label: string): string | null {
@@ -27,8 +28,11 @@ function valueAfterStrongLabel(html: string, label: string): string | null {
     const idx = html.indexOf(needle);
     if (idx === -1) return null;
     const after = html.slice(idx + needle.length);
+    // Next field is the next <strong>…</strong> label. HR pages often omit <br> between rows
+    // (…€320.000<strong>Spavaćih Soba</strong>); if we only stop at <br><strong>, the match
+    // runs until a much later <br> and pulls in digits from other lines → bogus prices (e.g. 20320000).
     const m = after.match(
-        /^\s*:\s*([\s\S]*?)(?=<br\s*\/?>\s*<strong>|<div\s+id="aboutAuthor"|<!--\s*margin)/i
+        /^\s*:\s*([\s\S]*?)(?=(?:<br\s*\/?>\s*)?<strong\b|<div\s+id="aboutAuthor"|<!--\s*margin)/i
     );
     if (!m) return null;
     return m[1]
@@ -47,14 +51,25 @@ function firstLabeledValue(html: string, labels: string[]): string | null {
     return null;
 }
 
+/** Parse one money token (e.g. €320.000 or 320.000); dots are thousands separators. */
+function parseEuroPriceToken(token: string): number {
+    let s = token.replace(/€/g, "").trim();
+    if (!/\d/.test(s)) return 0;
+    // "320.000,00" → integer euros only
+    s = s.replace(/^(.+\.\d{3}),\d{2}$/, "$1");
+    return parseInt(s.replace(/\./g, "").replace(/[^\d]/g, ""), 10) || 0;
+}
+
+/**
+ * Realitica often leaves a small stray number next to the price in the same `<strong>Cena</strong>` cell.
+ * Concatenating all digits (after removing spaces) turns "20 320.000" into 20320000 — so parse per token and take the max.
+ */
 function parseEuroPrice(text: string): number {
     if (!text) return 0;
-    const t = text
-        .replace(/€/g, "")
-        .replace(/\s/g, "")
-        .replace(/\./g, "")
-        .replace(/[^\d]/g, "");
-    return parseInt(t, 10) || 0;
+    const normalized = text.replace(/\s+/g, " ").trim();
+    const tokens = normalized.split(/[\s/|–—\-]+/).filter((t) => /\d/.test(t));
+    if (tokens.length === 0) return 0;
+    return Math.max(0, ...tokens.map(parseEuroPriceToken));
 }
 
 function parseM2(text: string | null): number {
@@ -84,12 +99,15 @@ function extractOpis(html: string, opisLabels: string[]): string {
 }
 
 const VRSTA = ["Vrsta", "Type", "Typ"];
-const CIJENA = ["Cijena", "Price", "Preis"];
-const SOBE = ["Spavaćih Soba", "Bedrooms", "Schlafzimmer"];
-const STAMBENA = ["Stambena Površina", "Living Area", "Wohnfläche"];
+/** Serbian pages use "Cena"; Croatian often "Cijena". */
+const CIJENA = ["Cena", "Cijena", "Price", "Preis"];
+/** EN/DE fallbacks when `<strong>Spavaćih Soba</strong>` is absent. */
+const SOBE_I18N = ["Spavaćih Soba", "Bedrooms", "Schlafzimmer"];
+/** EN/DE fallbacks when `<strong>Stambena Površina</strong>` is absent. */
+const STAMBENA_I18N = ["Stambena Površina", "Living Area", "Wohnfläche"];
 const ZEMLJISTE = ["Zemljište", "Land Area", "Landfläche"];
-const LOKACIJA = ["Lokacija", "Location", "Ort"];
-const PODRUCJE = ["Područje", "District", "Bezirk"];
+/** EN/DE fallbacks when `<strong>Područje</strong>` is absent. */
+const PODRUCJE_I18N = ["Područje", "District", "Bezirk"];
 const OPIS = ["Opis", "Description", "Beschreibung"];
 
 export class RealiticaAdapter extends AbstractAdapter {
@@ -175,7 +193,10 @@ export class RealiticaAdapter extends AbstractAdapter {
 
     getArea(entry: any): number {
         const html = this.labelsHtml(entry);
-        const living = parseM2(firstLabeledValue(html, STAMBENA));
+        const livingRaw =
+            valueAfterStrongLabel(html, "Stambena Površina") ||
+            firstLabeledValue(html, STAMBENA_I18N);
+        const living = parseM2(livingRaw);
         if (living > 0) return living;
         const land = parseM2(firstLabeledValue(html, ZEMLJISTE));
         if (land > 0) return land;
@@ -192,7 +213,9 @@ export class RealiticaAdapter extends AbstractAdapter {
 
     getRooms(entry: any): number {
         const html = this.labelsHtml(entry);
-        const raw = firstLabeledValue(html, SOBE);
+        const raw =
+            valueAfterStrongLabel(html, "Spavaćih Soba") ||
+            firstLabeledValue(html, SOBE_I18N);
         const n = raw ? parseInt(raw.replace(/\D/g, ""), 10) : NaN;
         return Number.isFinite(n) && n > 0 ? n : 1;
     }
@@ -245,10 +268,10 @@ export class RealiticaAdapter extends AbstractAdapter {
 
     getRawLocationText(entry: any): string {
         const html = this.labelsHtml(entry);
-        const loc = firstLabeledValue(html, LOKACIJA);
-        const area = firstLabeledValue(html, PODRUCJE);
-        const parts = [loc, area].filter(Boolean).join(", ");
-        if (parts) return parts;
+        const raw =
+            valueAfterStrongLabel(html, "Područje") ||
+            firstLabeledValue(html, PODRUCJE_I18N);
+        if (raw) return raw;
         return super.getRawLocationText(entry);
     }
 

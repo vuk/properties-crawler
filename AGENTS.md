@@ -25,8 +25,8 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 
 ## Crawler architecture (mental model)
 
-1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request).
-2. **Seeding**: `initiateCrawl` queues each adapter’s `baseUrl` and `seedUrl` entries.
+1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request). URLs to **4zida.rs** use a separate Bottleneck limiter (`4zida.rs`) at **~10 requests/minute** (6s minimum between *starting* fetches, one in flight) to reduce **429** responses; other sites use the default limiter.
+2. **Seeding**: `initiateCrawl` queues each adapter’s `baseUrl` and `seedUrl` entries (via `queueCrawlUrl`, which attaches the 4zida limiter when the host matches).
 3. **Every response**: `queueLinks` follows `<a href>` and `validateLink` on each adapter to decide what to queue (with URL normalization against `baseUrl`).
 4. **Listing pages**: If `getAdapter(url)` matches and `validateListing(url)` is true, `adapter.parseData(res)` builds a `Property`, Joi-validates, then `store` → `putProperty`.
 

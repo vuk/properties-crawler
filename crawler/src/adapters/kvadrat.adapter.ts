@@ -1,144 +1,154 @@
-import {AbstractAdapter, PropertyType, ServiceType} from "./abstract-adapter";
+import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
 import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
+/** Canonical origin; listing URLs look like `/sr/listing/{id}/{slug}.html`. */
+const KVADRAT_HOST = /kvadratnekretnine\.com/i;
+/** Detail pages only (numeric id segment), e.g. …/sr/listing/6774/izdavanje-kuca-….html */
+const LISTING_DETAIL_PATH = /\/sr\/listing\/\d+\/[^/?#]+\.html/i;
+
 export class KvadratAdapter extends AbstractAdapter {
-    baseUrl: string = 'http://www.kvadratnekretnine.com/';
-    seedUrl: string[] = ['http://www.kvadratnekretnine.com/sr/nekretnine/prodaja/'];
+    baseUrl = "https://www.kvadratnekretnine.com/";
+    seedUrl: string[] = [
+        "https://www.kvadratnekretnine.com/sr/nekretnine/prodaja/",
+        "https://www.kvadratnekretnine.com/sr/nekretnine/izdavanje/",
+    ];
+
+    private isKvadratUrl(url: string): boolean {
+        const t = url.trim();
+        if (t === "") return false;
+        if (/^https?:\/\//i.test(t)) return KVADRAT_HOST.test(t);
+        return t.startsWith("/sr/");
+    }
 
     isType(url: string): KvadratAdapter {
-        if (url.indexOf(this.baseUrl) !== -1) {
-            return this;
-        }
-        return null;
+        return this.isKvadratUrl(url) ? this : null;
+    }
+
+    private rowLabel($: any, row: any): string {
+        return $(row).children("td").first().text().trim().toLowerCase();
+    }
+
+    private rowValue($: any, row: any): string {
+        return $(row).children("td").last().text().trim();
+    }
+
+    /** Return `false` from `fn` to stop scanning (Cheerio `.each` break). */
+    private forEachPodaciRow(
+        entry: any,
+        fn: (label: string, value: string) => boolean | void
+    ): void {
+        entry.$(".property-d-table .col-md-6 table tbody tr").each((_i: number, row: any) => {
+            const stop = fn(this.rowLabel(entry.$, row), this.rowValue(entry.$, row)) === false;
+            if (stop) return false;
+        });
     }
 
     getArea(entry: any): number {
         let area = 0;
-        entry.$('.property-d-table .col-md-6')
-            .first().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'kvadratura') {
-                    area = parseFloat(entry.$(row).children('td').last().text());
-                }
-            });
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "kvadratura") area = parseFloat(value);
+        });
         return area;
     }
 
     getDescription(entry: any): string {
-        return entry.$('#description').text();
+        return entry.$("#description").text().trim();
     }
 
     getFloor(entry: any): number {
-        let floor = null;
-        entry.$('.property-d-table .col-md-6')
-            .last().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'sprat') {
-                    floor = entry.$(row).children('td').last().text();
-                    if (floor.toString() === 'pr' || isNaN(parseInt(floor))) {
-                        floor = '0';
-                    }
-                }
-            });
-        return parseInt(floor);
+        let floor: string | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "sprat") floor = value;
+        });
+        if (floor == null) return 0;
+        const t = floor.toString().trim().toLowerCase();
+        if (t === "pr" || t === "prizemlje" || isNaN(parseInt(floor, 10))) return 0;
+        return parseInt(floor, 10);
     }
 
     getFloors(entry: any): number {
-        let floors = null;
-        entry.$('.property-d-table .col-md-6')
-            .last().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'broj spratova') {
-                    floors = entry.$(row).children('td').last().text();
-                }
-            });
-        return parseInt(floors);
+        let floors: string | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "broj spratova") floors = value;
+        });
+        const n = floors != null ? parseInt(floors, 10) : NaN;
+        return Number.isFinite(n) ? n : 0;
     }
 
     getImage(entry: any): string {
-        return entry.$('#property-d-1').children('.item').first().children('img').attr('src');
+        const $first = entry.$("#property-d-1 .item").first();
+        const fromData = $first.attr("data-src");
+        if (fromData) return fromData;
+        const fromImg = $first.find("img").attr("src");
+        return fromImg ?? "";
     }
 
     getPrice(entry: any): number {
-        let price = null;
-        entry.$('.property-d-table .col-md-6')
-            .first().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'ukupna cena') {
-                    price = parseFloat(entry.$(row).children('td').last().text().replace('.', ''));
-                }
-            });
-        return price;
+        let price: number | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "ukupna cena") {
+                const normalized = value.replace(/\./g, "").replace(/\s/g, "");
+                price = parseFloat(normalized);
+            }
+        });
+        return price ?? 0;
     }
 
     getRooms(entry: any): number {
-        let rooms = null;
-        entry.$('.property-d-table .col-md-6')
-            .first().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'broj soba') {
-                    rooms = parseFloat(entry.$(row).children('td').last().text());
-                }
-            });
-        return rooms;
+        let rooms: number | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "broj soba") rooms = parseFloat(value);
+        });
+        return rooms ?? 0;
     }
 
     getTitle(entry: any): string {
-        return entry.$('h1').text();
+        return entry.$("h1").first().text().trim();
     }
 
     validateLink(url: string): boolean {
-        return url.indexOf(this.baseUrl) !== -1 && (url.indexOf('sr/listing/') !== -1 || url.indexOf('sr/nekretnine/prodaja/') !== -1);
+        if (!this.isKvadratUrl(url)) return false;
+        const p = url.split("?")[0];
+        return (
+            p.includes("/sr/listing/") ||
+            p.includes("/sr/nekretnine/prodaja/") ||
+            p.includes("/sr/nekretnine/izdavanje/") ||
+            url.includes("/sr/search")
+        );
     }
 
     validateListing(url: string): boolean {
-        return url.indexOf(this.baseUrl) !== -1 && url.indexOf('sr/listing/') !== -1;
+        if (!this.isKvadratUrl(url)) return false;
+        return LISTING_DETAIL_PATH.test(url);
     }
 
     getServiceType(entry: any): ServiceType {
-        let serviceType = null;
-        entry.$('.property-d-table .col-md-6')
-            .last().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'usluga') {
-                    serviceType = entry.$(row).children('td').last().text().toLowerCase() === 'prodaja' ? ServiceType.SALE : ServiceType.RENT;
-                }
-            });
-        return serviceType;
+        let serviceType: ServiceType | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "usluga") {
+                const v = value.toLowerCase();
+                serviceType = v === "prodaja" ? ServiceType.SALE : ServiceType.RENT;
+            }
+        });
+        return serviceType ?? ServiceType.SALE;
     }
 
     getType(entry: any): PropertyType {
-        let propertyType = null;
-        entry.$('.property-d-table .col-md-6')
-            .first().children('table')
-            .first().children('tbody')
-            .first().children('tr')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('td').first().text().toLowerCase() === 'tip') {
-                    propertyType = entry.$(row).children('td').last().text().toLowerCase() === 'stan' ? PropertyType.APARTMENT : PropertyType.HOUSE;
-                }
-            });
-        return propertyType;
+        let propertyType: PropertyType | null = null;
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "tip") {
+                const v = value.toLowerCase();
+                propertyType = v === "stan" || v === "garsonjera" ? PropertyType.APARTMENT : PropertyType.HOUSE;
+            }
+        });
+        return propertyType ?? PropertyType.APARTMENT;
     }
 
     getRawLocationText(entry: any): string {
         let loc = "";
-        entry.$('.property-d-table .col-md-6 table tbody tr').each((_i: number, row: any) => {
-            const label = entry.$(row).children('td').first().text().trim().toLowerCase();
-            if (label === 'grad' || label === 'lokacija' || label === 'mesto' || label === 'naselje') {
-                loc = entry.$(row).children('td').last().text().trim();
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "grad" || label === "lokacija" || label === "mesto" || label === "naselje") {
+                loc = value;
                 return false;
             }
         });
@@ -147,10 +157,9 @@ export class KvadratAdapter extends AbstractAdapter {
 
     getLocation(entry: any): SerbianMunicipality {
         let loc = "";
-        entry.$('.property-d-table .col-md-6 table tbody tr').each((_i: number, row: any) => {
-            const label = entry.$(row).children('td').first().text().trim().toLowerCase();
-            if (label === 'grad' || label === 'lokacija' || label === 'mesto' || label === 'naselje') {
-                loc = entry.$(row).children('td').last().text().trim();
+        this.forEachPodaciRow(entry, (label, value) => {
+            if (label === "grad" || label === "lokacija" || label === "mesto" || label === "naselje") {
+                loc = value;
                 return false;
             }
         });
