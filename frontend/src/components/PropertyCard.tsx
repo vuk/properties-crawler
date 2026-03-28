@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PropertyItem } from '../types'
 import { formatArea, formatPrice, formatRooms, formatUnitPrice } from '../format'
+import { propertyOriginLabel } from '../propertyOrigin'
 
 const placeholder =
   'data:image/svg+xml,' +
@@ -31,6 +32,7 @@ export function PropertyCard({ property }: Props) {
     property.image?.trim() ? property.image : placeholder,
   )
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const descOverlayRef = useRef<HTMLDivElement>(null)
 
   const locationLabel =
     property.rawLocation?.trim() ||
@@ -39,6 +41,20 @@ export function PropertyCard({ property }: Props) {
   const description = property.description.trim()
   const wordCount = countWords(description)
   const needsReadMore = wordCount > READ_MORE_WORD_THRESHOLD
+
+  useEffect(() => {
+    if (!needsReadMore || !descriptionExpanded) return
+
+    function handlePointerDown(event: PointerEvent) {
+      const root = descOverlayRef.current
+      if (!root?.contains(event.target as Node)) {
+        setDescriptionExpanded(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [needsReadMore, descriptionExpanded])
 
   const descriptionToShow =
     !needsReadMore || descriptionExpanded ? description : firstNWords(description, READ_MORE_WORD_THRESHOLD)
@@ -69,18 +85,29 @@ export function PropertyCard({ property }: Props) {
           ? 'card__badge card__badge--service-exchange'
           : ''
 
+  const originLabel = propertyOriginLabel(property.propertyUrl)
+
+  const excerptCollapsed = firstNWords(description, READ_MORE_WORD_THRESHOLD)
+
   return (
-    <article className="card">
+    <article
+      className={
+        descriptionExpanded && needsReadMore ? 'card card--desc-expanded' : 'card'
+      }
+    >
       <a
         className="card__media"
         href={property.propertyUrl}
         target="_blank"
         rel="noopener noreferrer"
       >
-        {typeLabel || serviceLabel ? (
+        {typeLabel || serviceLabel || originLabel ? (
           <span className="card__badges">
             {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
             {serviceLabel ? <span className={serviceBadgeClass}>{serviceLabel}</span> : null}
+            {originLabel ? (
+              <span className="card__badge card__badge--source">{originLabel}</span>
+            ) : null}
           </span>
         ) : null}
         <img
@@ -112,17 +139,41 @@ export function PropertyCard({ property }: Props) {
         <p className="card__location">{locationLabel}</p>
         {description ? (
           <div className="card__desc">
-            <p className="card__excerpt">{descriptionToShow}</p>
-            {needsReadMore ? (
-              <button
-                type="button"
-                className="card__desc-toggle"
-                onClick={() => setDescriptionExpanded((e) => !e)}
-                aria-expanded={descriptionExpanded}
-              >
-                {descriptionExpanded ? 'Pročitaj manje' : 'Pročitaj više'}
-              </button>
-            ) : null}
+            {needsReadMore && descriptionExpanded ? (
+              <>
+                <div className="card__desc-measure" aria-hidden>
+                  <p className="card__excerpt">{excerptCollapsed}</p>
+                  <button type="button" className="card__desc-toggle" tabIndex={-1}>
+                    Pročitaj više
+                  </button>
+                </div>
+                <div className="card__desc-overlay" ref={descOverlayRef}>
+                  <p className="card__excerpt">{description}</p>
+                  <button
+                    type="button"
+                    className="card__desc-toggle"
+                    onClick={() => setDescriptionExpanded(false)}
+                    aria-expanded
+                  >
+                    Pročitaj manje
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="card__excerpt">{descriptionToShow}</p>
+                {needsReadMore ? (
+                  <button
+                    type="button"
+                    className="card__desc-toggle"
+                    onClick={() => setDescriptionExpanded(true)}
+                    aria-expanded={false}
+                  >
+                    Pročitaj više
+                  </button>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
       </div>

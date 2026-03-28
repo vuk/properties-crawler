@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import type { FilterState, PropertyKind, ServiceKind } from '../types'
 
 interface Props {
@@ -51,13 +52,30 @@ const SERVICE_OPTIONS: { value: ServiceKind; label: string }[] = [
 ]
 
 export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
+  const [filtersOpen, setFiltersOpen] = useState(true)
+  const collapsibleId = useId()
+
   return (
     <section className="filters" aria-labelledby="filters-heading">
       <div className="filters__top">
         <div className="filters__intro">
-          <h2 id="filters-heading" className="filters__title">
-            Pretraga
-          </h2>
+          <div className="filters__title-row">
+            <h2 id="filters-heading" className="filters__title">
+              Pretraga
+            </h2>
+            <button
+              type="button"
+              className="filters__collapse-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls={collapsibleId}
+              onClick={() => setFiltersOpen((o) => !o)}
+            >
+              <span className="filters__collapse-icon" aria-hidden>
+                {filtersOpen ? '▾' : '▸'}
+              </span>
+              {filtersOpen ? 'Sakrij filtere' : 'Prikaži filtere'}
+            </button>
+          </div>
           <p className="filters__hint">Izaberite tip i opsege, zatim primenite.</p>
         </div>
         <div className="filters__actions-top">
@@ -70,73 +88,83 @@ export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
         </div>
       </div>
 
-      <div className="filters__kinds">
-        <div className="filters__kind" role="group" aria-label="Tip nekretnine">
-          {KIND_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className={
-                filters.propertyKind === value
-                  ? 'filters__kind-btn filters__kind-btn--active'
-                  : 'filters__kind-btn'
-              }
-              onClick={() => onChange({ ...filters, propertyKind: value })}
-            >
-              {label}
-            </button>
-          ))}
+      <div id={collapsibleId} className="filters__collapsible" hidden={!filtersOpen}>
+        <div className="filters__kinds">
+          <div
+            className="filters__kind filters__kind--property"
+            role="group"
+            aria-label="Tip nekretnine"
+          >
+            {KIND_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  filters.propertyKind === value
+                    ? 'filters__kind-btn filters__kind-btn--property filters__kind-btn--active'
+                    : 'filters__kind-btn filters__kind-btn--property'
+                }
+                onClick={() => onChange({ ...filters, propertyKind: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div
+            className="filters__kind filters__kind--service"
+            role="group"
+            aria-label="Vrsta ponude"
+          >
+            {SERVICE_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  filters.serviceKind === value
+                    ? 'filters__kind-btn filters__kind-btn--service filters__kind-btn--active'
+                    : 'filters__kind-btn filters__kind-btn--service'
+                }
+                onClick={() => onChange({ ...filters, serviceKind: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="filters__kind" role="group" aria-label="Vrsta ponude">
-          {SERVICE_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className={
-                filters.serviceKind === value
-                  ? 'filters__kind-btn filters__kind-btn--active'
-                  : 'filters__kind-btn'
-              }
-              onClick={() => onChange({ ...filters, serviceKind: value })}
-            >
-              {label}
-            </button>
-          ))}
+
+        <div className="filters__ranges">
+          <fieldset className="filters__fieldset">
+            <legend>Sobe</legend>
+            <div className="filters__pair">
+              {rangeField('minRooms', 'Min', filters, onChange)}
+              {rangeField('maxRooms', 'Max', filters, onChange)}
+            </div>
+          </fieldset>
+
+          <fieldset className="filters__fieldset">
+            <legend>Površina (m²)</legend>
+            <div className="filters__pair">
+              {rangeField('minArea', 'Min', filters, onChange)}
+              {rangeField('maxArea', 'Max', filters, onChange)}
+            </div>
+          </fieldset>
+
+          <fieldset className="filters__fieldset">
+            <legend>Cena (€)</legend>
+            <div className="filters__pair">
+              {rangeField('minPrice', 'Min', filters, onChange)}
+              {rangeField('maxPrice', 'Max', filters, onChange)}
+            </div>
+          </fieldset>
+
+          <fieldset className="filters__fieldset filters__fieldset--unit-price">
+            <legend>Cena po m² (€)</legend>
+            <div className="filters__pair">
+              {rangeField('minUnitPrice', 'Min', filters, onChange)}
+              {rangeField('maxUnitPrice', 'Max', filters, onChange)}
+            </div>
+          </fieldset>
         </div>
-      </div>
-
-      <div className="filters__ranges">
-        <fieldset className="filters__fieldset">
-          <legend>Sobe</legend>
-          <div className="filters__pair">
-            {rangeField('minRooms', 'Min', filters, onChange)}
-            {rangeField('maxRooms', 'Max', filters, onChange)}
-          </div>
-        </fieldset>
-
-        <fieldset className="filters__fieldset">
-          <legend>Površina (m²)</legend>
-          <div className="filters__pair">
-            {rangeField('minArea', 'Min', filters, onChange)}
-            {rangeField('maxArea', 'Max', filters, onChange)}
-          </div>
-        </fieldset>
-
-        <fieldset className="filters__fieldset">
-          <legend>Cena (€)</legend>
-          <div className="filters__pair">
-            {rangeField('minPrice', 'Min', filters, onChange)}
-            {rangeField('maxPrice', 'Max', filters, onChange)}
-          </div>
-        </fieldset>
-
-        <fieldset className="filters__fieldset">
-          <legend>Cena po m² (€)</legend>
-          <div className="filters__pair">
-            {rangeField('minUnitPrice', 'Min', filters, onChange)}
-            {rangeField('maxUnitPrice', 'Max', filters, onChange)}
-          </div>
-        </fieldset>
       </div>
     </section>
   )
