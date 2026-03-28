@@ -216,9 +216,12 @@ export class NovostioglasiAdapter extends AbstractAdapter {
     try {
       const u = new URL(url, this.baseUrl);
       if (!hostMatchesNovosti(u.hostname)) return false;
+      if (this.validateListing(url)) return true;
       const p = u.pathname.replace(/\/+$/, "") || "/";
       if (p === "/nekretnine") return true;
-      return p.startsWith("/nekretnine/");
+      if (!p.startsWith("/nekretnine/")) return false;
+      if (/\/(author|tag|feed|wp-|xmlrpc)\b/i.test(p)) return false;
+      return true;
     } catch {
       return false;
     }

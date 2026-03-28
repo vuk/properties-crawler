@@ -150,8 +150,11 @@ export class NekretnineAdapter extends AbstractAdapter {
       if (!u.hostname.replace(/^www\./i, "").endsWith("nekretnine.rs")) return false;
       if (u.search && u.search.includes("order=")) return false;
       const p = u.pathname;
-      if (!p.startsWith("/stambeni-objekti/stanovi/")) return false;
-      return true;
+      if (!p.startsWith("/stambeni-objekti/")) return false;
+      if (this.validateListing(url)) return true;
+      /** United Classifieds: only search-result (grid) URLs use `/lista/`; detail ads do not. */
+      if (p.includes("/lista/")) return true;
+      return false;
     } catch {
       return false;
     }

@@ -160,15 +160,20 @@ export class HalooglasiAdapter extends AbstractAdapter {
   }
 
   /**
-   * Follow any `/nekretnine/...` path (listings, filters, pagination, detail).
-   * Excludes unrelated site sections linked from the same domain.
+   * Queue the nekretnine hub, category branches (`prodaja-*` / `izdavanje-*`), and detail URLs.
+   * Skips unrelated paths under `/nekretnine/` (e.g. novogradnja projekti, inostranstvo hubs).
    */
   validateLink(url: string): boolean {
+    if (this.validateListing(url)) return true;
     try {
       const u = new URL(url, this.baseUrl);
       const host = u.hostname.replace(/^www\./i, "");
       if (host !== "halooglasi.com") return false;
-      return u.pathname === "/nekretnine" || u.pathname.startsWith("/nekretnine/");
+      const p = u.pathname.replace(/\/+$/, "") || "/";
+      if (p === "/nekretnine") return true;
+      const segments = p.split("/").filter(Boolean);
+      if (segments[0] !== "nekretnine" || segments.length < 2) return false;
+      return /^(prodaja|izdavanje)-/i.test(segments[1]);
     } catch {
       return false;
     }

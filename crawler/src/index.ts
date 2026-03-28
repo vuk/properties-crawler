@@ -10,8 +10,17 @@ dotenv.config();
 let adapters: AbstractAdapter[] = [];
 adapterList.map(adapter => adapters.push(new adapter()));
 
+/** Skip hrefs that cannot be property pages (saves adapter checks and queue noise). */
+function isNonCrawlableHref(raw: string | undefined): boolean {
+    if (raw == null) return true;
+    const t = raw.trim();
+    if (t === "" || t === "#" || t.startsWith("#")) return true;
+    if (/^(javascript|mailto|tel|data):/i.test(t)) return true;
+    return false;
+}
+
 async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
-    if (!url) return false;
+    if (isNonCrawlableHref(url)) return false;
     for (let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
             if (url.indexOf(adapters[i].baseUrl) === -1) {
@@ -29,11 +38,11 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
 }
 
 async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Promise<void> {
-    let uniqueLinks: string[] = [];
+    const seen = new Set<string>();
     $('a').each(async (index: number, element: any) => {
         let link = $(element).attr('href');
-        if (uniqueLinks.indexOf(link) === -1) {
-            uniqueLinks.push(link);
+        if (link != null && !seen.has(link)) {
+            seen.add(link);
             await validateLinks(link, adapters, crawler);
         }
     });

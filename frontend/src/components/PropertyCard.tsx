@@ -8,6 +8,20 @@ const placeholder =
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400"><rect fill="#e8e4df" width="640" height="400"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9a948c" font-family="system-ui,sans-serif" font-size="18">No photo</text></svg>`,
   )
 
+const READ_MORE_WORD_THRESHOLD = 40
+
+function countWords(text: string): number {
+  const t = text.trim()
+  if (!t) return 0
+  return t.split(/\s+/).filter(Boolean).length
+}
+
+function firstNWords(text: string, n: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= n) return text.trim()
+  return `${words.slice(0, n).join(' ')}…`
+}
+
 interface Props {
   property: PropertyItem
 }
@@ -16,13 +30,18 @@ export function PropertyCard({ property }: Props) {
   const [imgSrc, setImgSrc] = useState(
     property.image?.trim() ? property.image : placeholder,
   )
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   const locationLabel =
     property.rawLocation?.trim() ||
     (property.location ? `Lokacija #${property.location}` : 'Lokacija nepoznata')
 
   const description = property.description.trim()
-  const showReadMore = description.length > 100
+  const wordCount = countWords(description)
+  const needsReadMore = wordCount > READ_MORE_WORD_THRESHOLD
+
+  const descriptionToShow =
+    !needsReadMore || descriptionExpanded ? description : firstNWords(description, READ_MORE_WORD_THRESHOLD)
 
   const typeLabel =
     property.propertyType === 0 ? 'Stan' : property.propertyType === 1 ? 'Kuća' : null
@@ -71,16 +90,16 @@ export function PropertyCard({ property }: Props) {
         <p className="card__location">{locationLabel}</p>
         {description ? (
           <div className="card__desc">
-            <p className="card__excerpt">{property.description}</p>
-            {showReadMore ? (
-              <div className="card__desc-more-host">
-                <button type="button" className="card__desc-more-btn">
-                  Pročitaj više
-                </button>
-                <div className="card__desc-popover" role="tooltip">
-                  <div className="card__desc-popover-inner">{property.description}</div>
-                </div>
-              </div>
+            <p className="card__excerpt">{descriptionToShow}</p>
+            {needsReadMore ? (
+              <button
+                type="button"
+                className="card__desc-toggle"
+                onClick={() => setDescriptionExpanded((e) => !e)}
+                aria-expanded={descriptionExpanded}
+              >
+                {descriptionExpanded ? 'Pročitaj manje' : 'Pročitaj više'}
+              </button>
             ) : null}
           </div>
         ) : null}

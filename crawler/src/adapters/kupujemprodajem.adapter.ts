@@ -229,14 +229,17 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
   }
 
   /**
-   * Follow real-estate hub, category URLs, group listings, and `/oglas/` detail pages.
+   * Hub + `/nekretnine/kategorija/*` entry points and group listing trees; detail via `validateListing`.
+   * Avoids queuing arbitrary `/nekretnine/...` paths that are not category or listing flows.
    */
   validateLink(url: string): boolean {
     try {
       const u = new URL(url, this.baseUrl);
       if (u.hostname.replace(/^www\./i, "") !== "kupujemprodajem.com") return false;
-      const p = u.pathname;
-      if (p === "/nekretnine" || p.startsWith("/nekretnine/")) return true;
+      if (this.validateListing(url)) return true;
+      const p = u.pathname.replace(/\/+$/, "") || "/";
+      if (p === "/nekretnine") return true;
+      if (p.startsWith("/nekretnine/kategorija/")) return true;
       if (p.startsWith("/nekretnine-prodaja/")) return true;
       if (p.startsWith("/nekretnine-izdavanje/")) return true;
       return false;
