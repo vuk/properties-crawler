@@ -7,6 +7,19 @@ import adapterList from './adapters/adapter.enum';
 
 dotenv.config();
 
+function crawlerMaxConnections(): number {
+    const n = parseInt(process.env.CRAWLER_MAX_CONNECTIONS ?? "", 10);
+    if (Number.isFinite(n) && n >= 1 && n <= 50) return n;
+    return 10;
+}
+
+/** Optional minimum interval (ms) between starting requests; 0 = as fast as maxConnections allows. */
+function crawlerRateLimitMs(): number {
+    const n = parseInt(process.env.CRAWLER_RATE_LIMIT_MS ?? "", 10);
+    if (Number.isFinite(n) && n >= 0) return n;
+    return 0;
+}
+
 let adapters: AbstractAdapter[] = [];
 adapterList.map(adapter => adapters.push(new adapter()));
 
@@ -70,8 +83,16 @@ function getAdapter(url: string): AbstractAdapter {
 
 async function start() {
     await Database.getInstance().connect();
+    const maxConnections = crawlerMaxConnections();
+    const rateLimit = crawlerRateLimitMs();
+    console.log(
+        p.cyan("[INFO] ") +
+            `Crawler concurrency: maxConnections=${maxConnections}, rateLimit=${rateLimit}ms` +
+            (rateLimit > 0 ? " (rateLimit>0 caps in-flight requests to 1 in node-crawler)" : "")
+    );
     let crawler = new Crawler({
-        maxConnections: 1,
+        maxConnections,
+        rateLimit,
         callback: async (error: Error, res: any, done: Function) => {
             if (error) {
                 console.log(p.red(String(error)));

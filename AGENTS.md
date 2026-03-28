@@ -26,7 +26,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 
 ## Crawler architecture (mental model)
 
-1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with `maxConnections: 1`.
+1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request).
 2. **Seeding**: `initiateCrawl` queues each adapter’s `baseUrl` and `seedUrl` entries.
 3. **Every response**: `queueLinks` follows `<a href>` and `validateLink` on each adapter to decide what to queue (with URL normalization against `baseUrl`).
 4. **Listing pages**: If `getAdapter(url)` matches and `validateListing(url)` is true, `adapter.parseData(res)` builds a `Property`, Joi-validates, then `store` → `putProperty`.
