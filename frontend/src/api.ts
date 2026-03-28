@@ -22,6 +22,11 @@ export function buildSearchParams(
   } else if (filters.propertyKind === 'house') {
     params.set('propertyType', 'house')
   }
+  if (filters.serviceKind === 'sale') {
+    params.set('serviceType', 'sale')
+  } else if (filters.serviceKind === 'rent') {
+    params.set('serviceType', 'rent')
+  }
   appendIfPresent(params, 'minRooms', filters.minRooms)
   appendIfPresent(params, 'maxRooms', filters.maxRooms)
   appendIfPresent(params, 'minArea', filters.minArea)

@@ -89,6 +89,32 @@ function parsePropertyTypeFilter(
     return 'invalid';
 }
 
+/** sale=0, rent=1; omit or `all` = any service type */
+function parseServiceTypeFilter(
+    value: string | undefined,
+): 'all' | 0 | 1 | 'invalid' {
+    if (value == null || value === '') return 'all';
+    const v = value.trim().toLowerCase();
+    if (v === 'all') return 'all';
+    if (
+        v === 'sale' ||
+        v === 'selling' ||
+        v === 'prodaja' ||
+        v === '0'
+    ) {
+        return 0;
+    }
+    if (
+        v === 'rent' ||
+        v === 'renting' ||
+        v === 'izdavanje' ||
+        v === '1'
+    ) {
+        return 1;
+    }
+    return 'invalid';
+}
+
 interface HttpEvent {
     queryStringParameters?: Record<string, string> | null;
 }
@@ -119,6 +145,17 @@ export const handler = async (event: HttpEvent) => {
         };
     }
 
+    const serviceTypeFilter = parseServiceTypeFilter(qp.serviceType);
+    if (serviceTypeFilter === 'invalid') {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                message:
+                    'serviceType must be sale, rent, or all (omit for all)',
+            }),
+        };
+    }
+
     const rangeErrors = [
         validateMinMax(minRooms, maxRooms, 'rooms'),
         validateMinMax(minArea, maxArea, 'area'),
@@ -142,6 +179,12 @@ export const handler = async (event: HttpEvent) => {
     } else {
         conditions.push(`property_type = $${i}`);
         params.push(propertyTypeFilter);
+        i++;
+    }
+
+    if (serviceTypeFilter !== 'all') {
+        conditions.push(`service_type = $${i}`);
+        params.push(serviceTypeFilter);
         i++;
     }
 

@@ -1,4 +1,4 @@
-import type { FilterState, PropertyKind } from '../types'
+import type { FilterState, PropertyKind, ServiceKind } from '../types'
 
 interface Props {
   filters: FilterState
@@ -44,6 +44,12 @@ const KIND_OPTIONS: { value: PropertyKind; label: string }[] = [
   { value: 'house', label: 'Kuće' },
 ]
 
+const SERVICE_OPTIONS: { value: ServiceKind; label: string }[] = [
+  { value: 'all', label: 'Sve' },
+  { value: 'sale', label: 'Prodaja' },
+  { value: 'rent', label: 'Izdavanje' },
+]
+
 export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
   return (
     <section className="filters" aria-labelledby="filters-heading">
@@ -64,21 +70,39 @@ export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
         </div>
       </div>
 
-      <div className="filters__kind" role="group" aria-label="Tip nekretnine">
-        {KIND_OPTIONS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            className={
-              filters.propertyKind === value
-                ? 'filters__kind-btn filters__kind-btn--active'
-                : 'filters__kind-btn'
-            }
-            onClick={() => onChange({ ...filters, propertyKind: value })}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="filters__kinds">
+        <div className="filters__kind" role="group" aria-label="Tip nekretnine">
+          {KIND_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                filters.propertyKind === value
+                  ? 'filters__kind-btn filters__kind-btn--active'
+                  : 'filters__kind-btn'
+              }
+              onClick={() => onChange({ ...filters, propertyKind: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="filters__kind" role="group" aria-label="Vrsta ponude">
+          {SERVICE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                filters.serviceKind === value
+                  ? 'filters__kind-btn filters__kind-btn--active'
+                  : 'filters__kind-btn'
+              }
+              onClick={() => onChange({ ...filters, serviceKind: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="filters__ranges">

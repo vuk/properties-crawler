@@ -28,8 +28,12 @@ export interface PropertiesResponse {
 
 export type PropertyKind = 'all' | 'apartment' | 'house'
 
+/** Matches crawler `ServiceType`: sale=0, rent=1 */
+export type ServiceKind = 'all' | 'sale' | 'rent'
+
 export interface FilterState {
   propertyKind: PropertyKind
+  serviceKind: ServiceKind
   minRooms: string
   maxRooms: string
   minArea: string
@@ -42,6 +46,7 @@ export interface FilterState {
 
 export const emptyFilters: FilterState = {
   propertyKind: 'all',
+  serviceKind: 'all',
   minRooms: '',
   maxRooms: '',
   minArea: '',

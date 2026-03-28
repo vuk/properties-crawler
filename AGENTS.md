@@ -49,7 +49,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 - **Backend Lambda**: set `DATABASE_URL` in the function environment (deploy with `DATABASE_URL` in your shell or CI secrets). If the DB is in a VPC, configure Lambda VPC + security groups accordingly; this repo does not provision RDS.
 - **Docker**: repo root `docker compose up -d --build` runs DB + backend + crawler; `cd backend && npm run start:db` starts **only** Postgres; `npm run start:compose` starts all three from `backend/`.
 
-**Backend handler**: `get-properties.ts` uses `**process.env.DATABASE_URL`** and returns `{ items, lastEvaluatedKey: null }` (shape kept for compatibility with former DynamoDB pagination clients).
+**Backend handler**: `get-properties.ts` uses `**process.env.DATABASE_URL`** and returns paginated `{ items, page, pageSize, total, totalPages, lastEvaluatedKey: null }` and accepts query filters such as `serviceType=sale|rent|all` and `propertyType=apartment|house|all`.
 
 ## Dependencies and versions (high level)
 

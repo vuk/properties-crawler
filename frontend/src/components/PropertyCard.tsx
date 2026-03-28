@@ -52,6 +52,23 @@ export function PropertyCard({ property }: Props) {
         ? 'card__badge card__badge--house'
         : ''
 
+  const serviceLabel =
+    property.serviceType === 0
+      ? 'Prodaja'
+      : property.serviceType === 1
+        ? 'Izdavanje'
+        : property.serviceType === 2
+          ? 'Razmena'
+          : null
+  const serviceBadgeClass =
+    property.serviceType === 0
+      ? 'card__badge card__badge--service-sale'
+      : property.serviceType === 1
+        ? 'card__badge card__badge--service-rent'
+        : property.serviceType === 2
+          ? 'card__badge card__badge--service-exchange'
+          : ''
+
   return (
     <article className="card">
       <a
@@ -60,7 +77,12 @@ export function PropertyCard({ property }: Props) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
+        {typeLabel || serviceLabel ? (
+          <span className="card__badges">
+            {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
+            {serviceLabel ? <span className={serviceBadgeClass}>{serviceLabel}</span> : null}
+          </span>
+        ) : null}
         <img
           src={imgSrc}
           alt=""
