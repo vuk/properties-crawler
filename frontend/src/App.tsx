@@ -4,6 +4,10 @@ import { FilterPanel } from './components/FilterPanel'
 import { Pagination } from './components/Pagination'
 import { PropertyCard } from './components/PropertyCard'
 import {
+  buildListingUrlSearchParams,
+  parseListingStateFromSearch,
+} from './listingSearchParams'
+import {
   emptyFilters,
   type FilterState,
   type PropertiesResponse,
@@ -12,10 +16,34 @@ import {
 
 const PAGE_SIZE = 12
 
+function readInitialFromUrl(): {
+  filters: FilterState
+  page: number
+} {
+  if (typeof window === 'undefined') {
+    return { filters: emptyFilters, page: 1 }
+  }
+  return parseListingStateFromSearch(window.location.search)
+}
+
+function syncUrl(page: number, filters: FilterState): void {
+  const params = buildListingUrlSearchParams(page, filters)
+  const qs = params.toString()
+  const path = window.location.pathname
+  const next = qs ? `${path}?${qs}` : path
+  const current = `${path}${window.location.search}`
+  if (next !== current) {
+    window.history.replaceState(null, '', next)
+  }
+}
+
 function useListings() {
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(emptyFilters)
-  const [draftFilters, setDraftFilters] = useState<FilterState>(emptyFilters)
-  const [page, setPage] = useState(1)
+  const initial = readInitialFromUrl()
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(
+    initial.filters,
+  )
+  const [draftFilters, setDraftFilters] = useState<FilterState>(initial.filters)
+  const [page, setPage] = useState(initial.page)
   const [data, setData] = useState<PropertiesResponse | null>(null)
   const [items, setItems] = useState<PropertyItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +69,23 @@ function useListings() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    syncUrl(page, appliedFilters)
+  }, [page, appliedFilters])
+
+  useEffect(() => {
+    const onPopState = () => {
+      const { filters, page: p } = parseListingStateFromSearch(
+        window.location.search,
+      )
+      setAppliedFilters(filters)
+      setDraftFilters(filters)
+      setPage(p)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   const applyFilters = useCallback(() => {
     setAppliedFilters({ ...draftFilters })

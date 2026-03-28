@@ -10,9 +10,10 @@ export function propertyOriginLabel(propertyUrl: string): string | null {
   }
   if (host.includes('kupujemprodajem')) return 'KP'
   if (host.includes('halooglasi')) return 'Halooglasi'
+  // Before generic `nekretnine` — kvadratnekretnine.com hostname contains "nekretnine".
+  if (host.includes('kvadratnekretnine')) return 'Kvadrat'
   if (host.includes('nekretnine')) return 'Nekretnine'
   if (host.includes('4zida')) return '4zida'
   if (host.includes('novosti')) return 'Novosti'
-  if (host.includes('kvadratnekretnine')) return 'Kvadrat'
   return null
 }

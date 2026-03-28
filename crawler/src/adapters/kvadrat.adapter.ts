@@ -144,7 +144,12 @@ export class KvadratAdapter extends AbstractAdapter {
         return propertyType ?? PropertyType.APARTMENT;
     }
 
-    getRawLocationText(entry: any): string {
+    /** Line under the H1, e.g. "Beograd, Savski Venac" — primary raw_location + LAU hint. */
+    private getPropertyDetailsLocationLine(entry: any): string {
+        return entry.$("section.property-details p.bottom20").first().text().trim();
+    }
+
+    private getTableLocationLine(entry: any): string {
         let loc = "";
         this.forEachPodaciRow(entry, (label, value) => {
             if (label === "grad" || label === "lokacija" || label === "mesto" || label === "naselje") {
@@ -152,19 +157,33 @@ export class KvadratAdapter extends AbstractAdapter {
                 return false;
             }
         });
-        return loc.trim() || super.getRawLocationText(entry);
+        return loc.trim();
+    }
+
+    private getFallbackLocationContext(entry: any): string {
+        return `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    getRawLocationText(entry: any): string {
+        const fromDetails = this.getPropertyDetailsLocationLine(entry);
+        if (fromDetails) return fromDetails;
+        const fromTable = this.getTableLocationLine(entry);
+        return fromTable || super.getRawLocationText(entry);
     }
 
     getLocation(entry: any): SerbianMunicipality {
-        let loc = "";
-        this.forEachPodaciRow(entry, (label, value) => {
-            if (label === "grad" || label === "lokacija" || label === "mesto" || label === "naselje") {
-                loc = value;
-                return false;
-            }
-        });
-        const hit = resolveSerbianMunicipality(loc);
-        if (hit !== SerbianMunicipality.UNKNOWN) return hit;
-        return super.getLocation(entry);
+        const fromDetails = this.getPropertyDetailsLocationLine(entry);
+        if (fromDetails) {
+            const hit = resolveSerbianMunicipality(fromDetails);
+            if (hit !== SerbianMunicipality.UNKNOWN) return hit;
+        }
+        const fromTable = this.getTableLocationLine(entry);
+        if (fromTable) {
+            const hit = resolveSerbianMunicipality(fromTable);
+            if (hit !== SerbianMunicipality.UNKNOWN) return hit;
+        }
+        return resolveSerbianMunicipality(this.getFallbackLocationContext(entry));
     }
 }
