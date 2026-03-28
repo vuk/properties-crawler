@@ -119,7 +119,7 @@ export class RealiticaAdapter extends AbstractAdapter {
     return propertyType;
   }
 
-  getLocation(entry: any): SerbianMunicipality {
+  private realiticaLocationDd(entry: any): string {
     let loc = "";
     const tryRow = (row: any): boolean => {
       const dt = entry.$(row).children(".dl-horozontal").children("dt").text().toLowerCase();
@@ -137,6 +137,15 @@ export class RealiticaAdapter extends AbstractAdapter {
         if (tryRow(row)) return false;
       });
     }
+    return loc.trim();
+  }
+
+  getRawLocationText(entry: any): string {
+    return this.realiticaLocationDd(entry) || super.getRawLocationText(entry);
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    const loc = this.realiticaLocationDd(entry);
     const hit = resolveSerbianMunicipality(loc);
     if (hit !== SerbianMunicipality.UNKNOWN) return hit;
     return super.getLocation(entry);

@@ -254,6 +254,27 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
     return PropertyType.HOUSE;
   }
 
+  getRawLocationText(entry: any): string {
+    const ad = this.ad(entry);
+    const parts: string[] = [];
+    if (ad) {
+      for (const code of [
+        "grad",
+        "mesto",
+        "lokacija",
+        "opstina",
+        "city",
+        "realEstateCity",
+        "realEstatePlace",
+      ]) {
+        const v = attrFirst(ad, code);
+        if (v) parts.push(v);
+      }
+    }
+    const blob = parts.join(" ").trim();
+    return blob || super.getRawLocationText(entry);
+  }
+
   getLocation(entry: any): SerbianMunicipality {
     const ad = this.ad(entry);
     if (ad) {

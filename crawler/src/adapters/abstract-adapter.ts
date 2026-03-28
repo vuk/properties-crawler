@@ -6,6 +6,8 @@ import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-munic
 
 export { SerbianMunicipality };
 
+const RAW_LOCATION_MAX_LEN = 2000;
+
 dotenv.config();
 
 export enum PropertyType {
@@ -36,6 +38,8 @@ export interface Property {
     image: string,
     /** Serbian municipality / city (LAU), `SerbianMunicipality` enum as integer. */
     location: SerbianMunicipality,
+    /** Free-text location from the listing when `location` could not be mapped to an enum. */
+    rawLocation: string | null,
     oldPrice?: number
 }
 
@@ -48,15 +52,16 @@ export abstract class AbstractAdapter {
             propertyType: Joi.number().required(),
             serviceType: Joi.number().required(),
             title: Joi.string().required(),
-            description: Joi.string(),
+            description: Joi.string().allow(''),
             area: Joi.number().required(),
             floor: Joi.number().required(),
             floors: Joi.number().required(),
             rooms: Joi.number().required(),
             price: Joi.number().required(),
             unitPrice: Joi.number().required(),
-            image: Joi.string(),
+            image: Joi.string().allow(''),
             location: Joi.number().integer().required(),
+            rawLocation: Joi.string().max(RAW_LOCATION_MAX_LEN).allow(null),
         }).unknown(true);
 
     isType(url: string): AbstractAdapter {
@@ -99,12 +104,19 @@ export abstract class AbstractAdapter {
     abstract validateListing(url: string): boolean;
 
     /**
+     * Best-effort location strings from the page (or URL) for persistence when enum resolution fails.
+     */
+    getRawLocationText(entry: any): string {
+        return `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    /**
      * Derive LAU location from structured fields when possible; default uses title, description, and URL.
      */
     getLocation(entry: any): SerbianMunicipality {
-        return resolveSerbianMunicipality(
-            `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`,
-        );
+        return resolveSerbianMunicipality(this.getRawLocationText(entry));
     }
 
     shouldReturn(entry: any): boolean {
@@ -125,6 +137,13 @@ export abstract class AbstractAdapter {
     }
 
     async parseData(entry: any): Promise<Property> {
+        const rawLocationText = this.getRawLocationText(entry);
+        const location = this.getLocation(entry);
+        const rawLocation =
+            location === SerbianMunicipality.UNKNOWN && rawLocationText.length > 0
+                ? rawLocationText.slice(0, RAW_LOCATION_MAX_LEN)
+                : null;
+
         const property: Property = {
             id: uuidv4(),
             propertyUrl: this.getUrl(entry),
@@ -139,7 +158,8 @@ export abstract class AbstractAdapter {
             image: this.getImage(entry),
             propertyType: this.getType(entry),
             serviceType: this.getServiceType(entry),
-            location: this.getLocation(entry),
+            location,
+            rawLocation,
         };
 
         await this.validationSchema.validateAsync(property);

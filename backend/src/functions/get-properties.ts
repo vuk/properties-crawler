@@ -36,6 +36,10 @@ function rowToItem(row: Record<string, unknown>) {
         unitPrice: row.unit_price,
         image: row.image,
         location: row.location,
+        rawLocation:
+            row.raw_location != null && String(row.raw_location).trim() !== ''
+                ? String(row.raw_location)
+                : null,
         ...(row.old_price != null ? { oldPrice: row.old_price } : {}),
     };
 }

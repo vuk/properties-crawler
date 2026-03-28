@@ -207,6 +207,24 @@ export class HalooglasiAdapter extends AbstractAdapter {
     return PropertyType.APARTMENT;
   }
 
+  getRawLocationText(entry: any): string {
+    try {
+      const u = new URL(this.getUrl(entry));
+      const parts = u.pathname.split("/").filter(Boolean);
+      const hints: string[] = [];
+      for (let i = 2; i < parts.length; i++) {
+        const seg = parts[i];
+        if (/^(prodaja|izdavanje)-/.test(seg)) continue;
+        if (/^\d{10,}$/.test(seg)) continue;
+        hints.push(seg.replace(/-/g, " "));
+      }
+      if (hints.length > 0) return hints.join(", ");
+    } catch {
+      /* ignore */
+    }
+    return super.getRawLocationText(entry);
+  }
+
   getLocation(entry: any): SerbianMunicipality {
     try {
       const u = new URL(this.getUrl(entry));

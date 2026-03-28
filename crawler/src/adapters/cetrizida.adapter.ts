@@ -199,6 +199,15 @@ export class CetrizidaAdapter extends AbstractAdapter {
         return root.includes("-kuca") ? PropertyType.HOUSE : PropertyType.APARTMENT;
     }
 
+    getRawLocationText(entry: any): string {
+        const segs = this.listingPathSegments(this.getUrl(entry));
+        if (segs.length >= 2) {
+            const s = segs[1].replace(/-/g, " ").trim();
+            if (s) return s;
+        }
+        return super.getRawLocationText(entry);
+    }
+
     getLocation(entry: any): SerbianMunicipality {
         const segs = this.listingPathSegments(this.getUrl(entry));
         if (segs.length >= 2) {

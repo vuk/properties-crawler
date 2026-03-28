@@ -18,13 +18,17 @@ CREATE TABLE IF NOT EXISTS properties (
     unit_price DOUBLE PRECISION NOT NULL,
     image TEXT NOT NULL DEFAULT '',
     old_price DOUBLE PRECISION NULL,
-    location SMALLINT NOT NULL DEFAULT 0
+    location SMALLINT NOT NULL DEFAULT 0,
+    raw_location TEXT NULL
 )`;
 
 const CREATE_INDEX_SQL = `CREATE INDEX IF NOT EXISTS properties_property_type_idx ON properties (property_type)`;
 
 const ADD_LOCATION_COLUMN_SQL = `
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS location SMALLINT NOT NULL DEFAULT 0`;
+
+const ADD_RAW_LOCATION_COLUMN_SQL = `
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS raw_location TEXT NULL`;
 
 /** Migrate legacy INTEGER `rooms` to float (e.g. Halo oglasi "3.5"). */
 const ALTER_ROOMS_TO_FLOAT_SQL = `
@@ -71,6 +75,10 @@ function rowToProperty(row: Record<string, unknown>): Property {
             row.location != null && row.location !== ''
                 ? (Number(row.location) as SerbianMunicipality)
                 : SerbianMunicipality.UNKNOWN,
+        rawLocation:
+            row.raw_location != null && String(row.raw_location).trim() !== ''
+                ? String(row.raw_location)
+                : null,
         ...(row.old_price != null && row.old_price !== ''
             ? { oldPrice: Number(row.old_price) }
             : {}),
@@ -106,6 +114,7 @@ export class Database {
         await this.pool.query(CREATE_TABLE_SQL);
         await this.pool.query(CREATE_INDEX_SQL);
         await this.pool.query(ADD_LOCATION_COLUMN_SQL);
+        await this.pool.query(ADD_RAW_LOCATION_COLUMN_SQL);
         await this.pool.query(ALTER_ROOMS_TO_FLOAT_SQL);
     }
 
@@ -124,8 +133,9 @@ export class Database {
         await this.client.query(
             `INSERT INTO properties (
                 id, property_url, title, property_type, service_type, description,
-                area, floor, floors, rooms, price, unit_price, image, old_price, location
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+                area, floor, floors, rooms, price, unit_price, image, old_price, location,
+                raw_location
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
             [
                 property.id,
                 property.propertyUrl,
@@ -142,6 +152,7 @@ export class Database {
                 property.image,
                 property.oldPrice ?? null,
                 property.location,
+                property.rawLocation ?? null,
             ],
         );
     }

@@ -242,6 +242,16 @@ export class NovostioglasiAdapter extends AbstractAdapter {
     }
   }
 
+  getRawLocationText(entry: any): string {
+    const root = entry.$(".oglas-single");
+    const loc =
+      singleInfoValue(entry.$, root, "lokacija") ||
+      singleInfoValue(entry.$, root, "grad") ||
+      singleInfoValue(entry.$, root, "mesto") ||
+      "";
+    return loc.trim() || super.getRawLocationText(entry);
+  }
+
   getLocation(entry: any): SerbianMunicipality {
     const root = entry.$(".oglas-single");
     const loc =

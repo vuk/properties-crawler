@@ -226,6 +226,22 @@ export class NekretnineAdapter extends AbstractAdapter {
     return out;
   }
 
+  getRawLocationText(entry: any): string {
+    const blob = [
+      this.labelValue(entry, "lokacija"),
+      this.labelValue(entry, "grad"),
+      this.labelValue(entry, "mesto"),
+      this.labelValue(entry, "naselje"),
+      this.findBaseInfDd(entry, "lokacija"),
+      this.findBaseInfDd(entry, "grad"),
+      this.findBaseInfDd(entry, "mesto"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return blob || super.getRawLocationText(entry);
+  }
+
   getLocation(entry: any): SerbianMunicipality {
     const blob = [
       this.labelValue(entry, "lokacija"),

@@ -133,6 +133,18 @@ export class KvadratAdapter extends AbstractAdapter {
         return propertyType;
     }
 
+    getRawLocationText(entry: any): string {
+        let loc = "";
+        entry.$('.property-d-table .col-md-6 table tbody tr').each((_i: number, row: any) => {
+            const label = entry.$(row).children('td').first().text().trim().toLowerCase();
+            if (label === 'grad' || label === 'lokacija' || label === 'mesto' || label === 'naselje') {
+                loc = entry.$(row).children('td').last().text().trim();
+                return false;
+            }
+        });
+        return loc.trim() || super.getRawLocationText(entry);
+    }
+
     getLocation(entry: any): SerbianMunicipality {
         let loc = "";
         entry.$('.property-d-table .col-md-6 table tbody tr').each((_i: number, row: any) => {

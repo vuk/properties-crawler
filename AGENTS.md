@@ -38,13 +38,13 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 - `validateLink` / `validateListing` — **different concerns**: discovery vs detail page
 - `shouldReturn` — env-driven filters (`MIN_*`, `MAX_*`, `NO_ATTIC`, `NO_BASEMENT`); **note**: `isType` returns `this` or `null` but is typed as `AbstractAdapter` in the base class.
 
-`**Property`** uses numeric enums `PropertyType` and `ServiceType` (TypeScript numeric enums → stored as `SMALLINT` in Postgres), plus `location` as `SerbianMunicipality` (integer LAU code; `crawler/src/adapters/serbian-municipality.ts`).
+`**Property`** uses numeric enums `PropertyType` and `ServiceType` (TypeScript numeric enums → stored as `SMALLINT` in Postgres), plus `location` as `SerbianMunicipality` (integer LAU code; `crawler/src/adapters/serbian-municipality.ts`). When the enum cannot be resolved, `rawLocation` holds scraped free text (`raw_location` in Postgres).
 
 ## PostgreSQL and environment
 
 - **Connection**: `**DATABASE_URL`** (e.g. `postgresql://postgres:postgres@localhost:5432/properties`) for both crawler and backend.
 - **SSL**: set `**DATABASE_SSL=true`** when the server requires TLS (typical for managed cloud Postgres).
-- **Table** `properties`: `id` (PK, text UUID), unique `property_url`, numeric fields for enums and measures, `rooms` as `DOUBLE PRECISION` (fractional counts from some sites), `location` (`SMALLINT`, Serbian municipality/city enum); index on `property_type` for listing queries. On connect, the crawler runs `ALTER TABLE … ADD COLUMN IF NOT EXISTS location` and migrates legacy integer `rooms` to float when needed.
+- **Table** `properties`: `id` (PK, text UUID), unique `property_url`, numeric fields for enums and measures, `rooms` as `DOUBLE PRECISION` (fractional counts from some sites), `location` (`SMALLINT`, Serbian municipality/city enum), optional `raw_location` (`TEXT`) when `location` is unknown; index on `property_type` for listing queries. On connect, the crawler adds missing columns (`location`, `raw_location`) and migrates legacy integer `rooms` to float when needed.
 - **Crawler**: must set `DATABASE_URL` before `Database.connect()`.
 - **Backend Lambda**: set `DATABASE_URL` in the function environment (deploy with `DATABASE_URL` in your shell or CI secrets). If the DB is in a VPC, configure Lambda VPC + security groups accordingly; this repo does not provision RDS.
 - **Docker**: repo root `docker compose up -d --build` runs DB + backend + crawler; `cd backend && npm run start:db` starts **only** Postgres; `npm run start:compose` starts all three from `backend/`.
