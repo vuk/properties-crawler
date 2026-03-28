@@ -98,6 +98,33 @@ function parseFloorsLabel(s: string | undefined): number {
   return m ? parseInt(m[0], 10) : 0;
 }
 
+/** Halo detail page: `.product-details-desc` spans with `data-code` (grad / lokacija / mikrolokacija). */
+type HaloProductDetailsLocation = {
+  grad?: string;
+  lokacija?: string;
+  mikrolokacija?: string;
+};
+
+function stripOpstinaPrefix(s: string): string {
+  return s.replace(/^\s*opština\s+/i, "").replace(/^\s*opstina\s+/i, "").trim();
+}
+
+function parseProductDetailsDesc($: any): HaloProductDetailsLocation | null {
+  if (!$ || typeof $ !== "function") return null;
+  const root = $(".product-details-desc").first();
+  if (!root.length) return null;
+  const out: HaloProductDetailsLocation = {};
+  root.find("span[data-code]").each((_i: number, el: any) => {
+    const code = $(el).attr("data-code");
+    const text = $(el).text().replace(/\s+/g, " ").trim();
+    if (!text) return;
+    if (code === "grad") out.grad = text;
+    else if (code === "lokacija") out.lokacija = text;
+    else if (code === "mikrolokacija") out.mikrolokacija = text;
+  });
+  return out.grad || out.lokacija || out.mikrolokacija ? out : null;
+}
+
 export class HalooglasiAdapter extends AbstractAdapter {
   baseUrl = "https://www.halooglasi.com";
   /** Category listing entry points; detail URLs end with `/…/{numericId}`. */
@@ -113,6 +140,16 @@ export class HalooglasiAdapter extends AbstractAdapter {
     const body = typeof entry.body === "string" ? entry.body : "";
     entry._haloClassifiedParsed = parseClassifiedFromBody(body);
     return entry._haloClassifiedParsed;
+  }
+
+  /** Cached structured location from HTML (preferred over URL slugs for LAU mapping). */
+  private productDetailsLocation(entry: any): HaloProductDetailsLocation | null {
+    if (entry._haloProductDetailsLoc !== undefined) {
+      return entry._haloProductDetailsLoc;
+    }
+    const $ = entry.$;
+    entry._haloProductDetailsLoc = $ ? parseProductDetailsDesc($) : null;
+    return entry._haloProductDetailsLoc;
   }
 
   getArea(entry: any): number {
@@ -213,6 +250,11 @@ export class HalooglasiAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
+    const d = this.productDetailsLocation(entry);
+    if (d) {
+      const parts = [d.grad, d.lokacija, d.mikrolokacija].filter(Boolean);
+      if (parts.length > 0) return parts.join(" - ");
+    }
     try {
       const u = new URL(this.getUrl(entry));
       const parts = u.pathname.split("/").filter(Boolean);
@@ -231,6 +273,19 @@ export class HalooglasiAdapter extends AbstractAdapter {
   }
 
   getLocation(entry: any): SerbianMunicipality {
+    const d = this.productDetailsLocation(entry);
+    if (d) {
+      const joined = [d.lokacija, d.grad, d.mikrolokacija].filter(Boolean).join(" ");
+      let r = resolveSerbianMunicipality(joined);
+      if (r !== SerbianMunicipality.UNKNOWN) return r;
+      if (d.lokacija) {
+        const stripped = stripOpstinaPrefix(d.lokacija);
+        if (stripped !== d.lokacija) {
+          r = resolveSerbianMunicipality([stripped, d.grad, d.mikrolokacija].filter(Boolean).join(" "));
+          if (r !== SerbianMunicipality.UNKNOWN) return r;
+        }
+      }
+    }
     try {
       const u = new URL(this.getUrl(entry));
       const parts = u.pathname.split("/").filter(Boolean);

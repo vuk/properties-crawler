@@ -1,4 +1,5 @@
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
+import { MUNICIPALITY_OPTIONS } from '../municipalities'
 import type { FilterState, PropertyKind, ServiceKind } from '../types'
 
 interface Props {
@@ -51,9 +52,35 @@ const SERVICE_OPTIONS: { value: ServiceKind; label: string }[] = [
   { value: 'rent', label: 'Izdavanje' },
 ]
 
+function foldForSearch(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
+
+function toggleLocationId(ids: number[], id: number): number[] {
+  const next = new Set(ids)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  return [...next].sort((a, b) => a - b)
+}
+
 export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
   const [filtersOpen, setFiltersOpen] = useState(true)
+  const [locationSearch, setLocationSearch] = useState('')
   const collapsibleId = useId()
+  const locationListId = useId()
+
+  const locationQuery = foldForSearch(locationSearch.trim())
+  const filteredMunicipalities = useMemo(() => {
+    if (!locationQuery) return MUNICIPALITY_OPTIONS
+    return MUNICIPALITY_OPTIONS.filter((o) =>
+      foldForSearch(o.label).includes(locationQuery),
+    )
+  }, [locationQuery])
+
+  const selectedSet = useMemo(() => new Set(filters.locationIds), [filters.locationIds])
 
   return (
     <section className="filters" aria-labelledby="filters-heading">
@@ -76,7 +103,9 @@ export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
               {filtersOpen ? 'Sakrij filtere' : 'Prikaži filtere'}
             </button>
           </div>
-          <p className="filters__hint">Izaberite tip i opsege, zatim primenite.</p>
+          <p className="filters__hint">
+            Izaberite tip, lokacije i opsege, zatim primenite.
+          </p>
         </div>
         <div className="filters__actions-top">
           <button type="button" className="btn btn--ghost" onClick={onReset}>
@@ -131,6 +160,66 @@ export function FilterPanel({ filters, onChange, onApply, onReset }: Props) {
             ))}
           </div>
         </div>
+
+        <fieldset className="filters__fieldset filters__fieldset--locations">
+          <legend>Lokacije</legend>
+          <p className="filters__locations-meta">
+            {filters.locationIds.length === 0 ? (
+              'Sve opštine / gradovi'
+            ) : (
+              <>
+                Izabrano: <strong>{filters.locationIds.length}</strong>
+                <button
+                  type="button"
+                  className="filters__locations-clear"
+                  onClick={() => onChange({ ...filters, locationIds: [] })}
+                >
+                  Obriši izbor
+                </button>
+              </>
+            )}
+          </p>
+          <label className="field filters__location-search">
+            <span className="field__label">Pretraga</span>
+            <input
+              type="search"
+              className="field__input"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              placeholder="npr. Beograd, Novi Sad…"
+              autoComplete="off"
+              aria-controls={locationListId}
+            />
+          </label>
+          <div
+            id={locationListId}
+            className="filters__location-list"
+            role="group"
+            aria-label="Lista opština"
+          >
+            {filteredMunicipalities.map(({ id, label }) => {
+              const checked = selectedSet.has(id)
+              return (
+                <label key={id} className="filters__location-row">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      onChange({
+                        ...filters,
+                        locationIds: toggleLocationId(filters.locationIds, id),
+                      })
+                    }
+                  />
+                  <span className="filters__location-label">{label}</span>
+                  <span className="filters__location-id" aria-hidden>
+                    {id}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
 
         <div className="filters__ranges">
           <fieldset className="filters__fieldset">

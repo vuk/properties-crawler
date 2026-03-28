@@ -35,6 +35,10 @@ export function buildSearchParams(
   appendIfPresent(params, 'maxPrice', filters.maxPrice)
   appendIfPresent(params, 'minUnitPrice', filters.minUnitPrice)
   appendIfPresent(params, 'maxUnitPrice', filters.maxUnitPrice)
+  if (filters.locationIds.length > 0) {
+    const sorted = [...filters.locationIds].sort((a, b) => a - b)
+    params.set('locationIds', sorted.join(','))
+  }
   return params
 }
 

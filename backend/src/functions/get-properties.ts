@@ -115,12 +115,60 @@ function parseServiceTypeFilter(
     return 'invalid';
 }
 
+const MAX_LOCATION_IDS = 200;
+
+/**
+ * Parse municipality `location` IDs from query string.
+ * Accepts comma-separated `locationIds=18,85` and/or repeated keys when the
+ * API provides multiValueQueryStringParameters.
+ */
+function parseLocationIds(
+    qp: Record<string, string | undefined>,
+    multiValue?: Record<string, string[] | undefined> | null,
+): { ok: true; ids: number[] } | { ok: false; message: string } {
+    const tokens: string[] = [];
+    const single = qp.locationIds?.trim();
+    if (single) {
+        for (const part of single.split(',')) tokens.push(part);
+    }
+    const multi = multiValue?.locationIds;
+    if (multi?.length) {
+        for (const chunk of multi) {
+            for (const part of chunk.split(',')) tokens.push(part);
+        }
+    }
+    const seen = new Set<number>();
+    for (const raw of tokens) {
+        const t = raw.trim();
+        if (!t) continue;
+        const n = Number(t);
+        if (!Number.isInteger(n) || n < 0 || n > 32767) {
+            return {
+                ok: false,
+                message:
+                    'locationIds must be comma-separated non-negative integers (municipality codes)',
+            };
+        }
+        seen.add(n);
+    }
+    const ids = [...seen].sort((a, b) => a - b);
+    if (ids.length > MAX_LOCATION_IDS) {
+        return {
+            ok: false,
+            message: `locationIds: at most ${MAX_LOCATION_IDS} distinct values`,
+        };
+    }
+    return { ok: true, ids };
+}
+
 interface HttpEvent {
     queryStringParameters?: Record<string, string> | null;
+    multiValueQueryStringParameters?: Record<string, string[]> | null;
 }
 
 export const handler = async (event: HttpEvent) => {
     const qp = event.queryStringParameters ?? {};
+    const mqp = event.multiValueQueryStringParameters;
 
     const page = parsePage(qp.page);
     const pageSize = parsePageSize(qp.pageSize);
@@ -169,6 +217,15 @@ export const handler = async (event: HttpEvent) => {
             body: JSON.stringify({ message: rangeErrors.join('; ') }),
         };
     }
+
+    const locationParse = parseLocationIds(qp as Record<string, string | undefined>, mqp);
+    if (locationParse.ok === false) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ message: locationParse.message }),
+        };
+    }
+    const locationIds = locationParse.ids;
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -226,6 +283,12 @@ export const handler = async (event: HttpEvent) => {
     if (maxUnitPrice !== undefined) {
         conditions.push(`unit_price <= $${i}`);
         params.push(maxUnitPrice);
+        i++;
+    }
+
+    if (locationIds.length > 0) {
+        conditions.push(`location = ANY($${i}::smallint[])`);
+        params.push(locationIds);
         i++;
     }
 

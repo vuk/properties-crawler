@@ -34,6 +34,8 @@ export type ServiceKind = 'all' | 'sale' | 'rent'
 export interface FilterState {
   propertyKind: PropertyKind
   serviceKind: ServiceKind
+  /** Serbian municipality LAU codes; matches PropertyItem.location */
+  locationIds: number[]
   minRooms: string
   maxRooms: string
   minArea: string
@@ -47,6 +49,7 @@ export interface FilterState {
 export const emptyFilters: FilterState = {
   propertyKind: 'all',
   serviceKind: 'all',
+  locationIds: [],
   minRooms: '',
   maxRooms: '',
   minArea: '',
