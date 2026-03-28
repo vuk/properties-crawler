@@ -17,7 +17,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 | `backend/` | Serverless Framework service (`serverless.yml`), **esbuild** via `serverless-esbuild`, DynamoDB local plugins; `src/functions/` for Lambdas. |
 | `backend/resources/resource.yml` | DynamoDB table definition and GSIs. |
 
-**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Novostioglasi, Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run**; others are currently commented out (as of this writing, **Halooglasi** is the active one).
+**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi).
 
 ## Crawler architecture (mental model)
 
