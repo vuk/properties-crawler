@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS properties (
     area DOUBLE PRECISION NOT NULL,
     floor INTEGER NOT NULL,
     floors INTEGER NOT NULL,
-    rooms INTEGER NOT NULL,
+    rooms DOUBLE PRECISION NOT NULL,
     price DOUBLE PRECISION NOT NULL,
     unit_price DOUBLE PRECISION NOT NULL,
     image TEXT NOT NULL DEFAULT '',
@@ -25,6 +25,32 @@ const CREATE_INDEX_SQL = `CREATE INDEX IF NOT EXISTS properties_property_type_id
 
 const ADD_LOCATION_COLUMN_SQL = `
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS location SMALLINT NOT NULL DEFAULT 0`;
+
+/** Migrate legacy INTEGER `rooms` to float (e.g. Halo oglasi "3.5"). */
+const ALTER_ROOMS_TO_FLOAT_SQL = `
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'properties'
+      AND column_name = 'rooms' AND data_type = 'integer'
+  ) THEN
+    ALTER TABLE properties
+      ALTER COLUMN rooms TYPE DOUBLE PRECISION
+      USING rooms::double precision;
+  END IF;
+END $$`;
+
+/** Postgres INTEGER columns for floor counts. */
+function asDbInt(n: number): number {
+    const r = Math.round(Number(n));
+    return Number.isFinite(r) ? r : 0;
+}
+
+function asDbFloat(n: number): number {
+    const x = Number(n);
+    return Number.isFinite(x) ? x : 0;
+}
 
 function rowToProperty(row: Record<string, unknown>): Property {
     return {
@@ -80,6 +106,7 @@ export class Database {
         await this.pool.query(CREATE_TABLE_SQL);
         await this.pool.query(CREATE_INDEX_SQL);
         await this.pool.query(ADD_LOCATION_COLUMN_SQL);
+        await this.pool.query(ALTER_ROOMS_TO_FLOAT_SQL);
     }
 
     private get client(): Pool {
@@ -107,9 +134,9 @@ export class Database {
                 property.serviceType,
                 property.description,
                 property.area,
-                property.floor,
-                property.floors,
-                property.rooms,
+                asDbInt(property.floor),
+                asDbInt(property.floors),
+                asDbFloat(property.rooms),
                 property.price,
                 property.unitPrice,
                 property.image,

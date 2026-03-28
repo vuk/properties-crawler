@@ -29,6 +29,7 @@ export interface Property {
     area: number,
     floor: number,
     floors: number,
+    /** May be fractional (e.g. 3.5 rooms on some portals). */
     rooms: number,
     price: number,
     unitPrice: number,
