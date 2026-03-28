@@ -3,12 +3,15 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es6",
+    "target": "ES2022",
     "noImplicitAny": false,
     "moduleResolution": "node",
     "sourceMap": true,
+    "noEmit": true,
     "outDir": "dist",
+    "rootDir": "src",
     "baseUrl": ".",
+    "skipLibCheck": true,
     "paths": {
       "*": [
         "node_modules/*",

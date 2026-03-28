@@ -32,3 +32,10 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
 PROPERTY_TABLE=
 ```
+
+## Sources for properties
+
+* https://www.nekretnine.rs/
+* https://www.4zida.rs/
+* https://www.halooglasi.com/nekretnine
+* https://www.kupujemprodajem.com/nekretnine

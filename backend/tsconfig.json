@@ -9,16 +9,18 @@
         "removeComments": false,
         "noLib": false,
         "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
-        "target": "es6",
+        "target": "ES2022",
         "sourceMap": true,
         "allowJs": true,
         "lib": [
-            "es6"
+            "ES2022"
         ],
         "resolveJsonModule": true,
-        "outDir": "./dist"
+        "outDir": "./dist",
+        "skipLibCheck": true
     },
     "include": [
         "src/**/*",
@@ -29,8 +31,5 @@
         "node_modules",
         "**/*.spec.ts",
         "**/*.test.ts"
-    ],
-    "types": [
-        "typePatches"
     ]
 }

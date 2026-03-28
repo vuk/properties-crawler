@@ -1,10 +1,9 @@
-service:
-  name: properties-backend
+service: properties-backend
 
 provider:
   name: aws
-  stackName: ${self:service.name}-${self:provider.stage}
-  runtime: nodejs12.x
+  stackName: ${self:service}-${self:provider.stage}
+  runtime: nodejs20.x
   region: ${opt:region, env:AWS_REGION, 'eu-west-1'}
   stage: ${opt:stage, 'dev'}
   stackTags:
@@ -28,9 +27,9 @@ provider:
       Resource:
         - "Fn::GetAtt": [ PropertiesTable, Arn ]
         - Fn::Join:
-          - "/"
-          - - { "Fn::GetAtt": [ PropertiesTable, Arn ] }
-            - "index/*"
+            - "/"
+            - - { "Fn::GetAtt": [ PropertiesTable, Arn ] }
+              - "index/*"
   environment:
     SERVICE_STAGE: ${self:provider.stage}
     PROPERTIES_TABLE: ${self:custom.propertiesTableName}
@@ -49,14 +48,15 @@ custom:
       seed: true
       convertEmptyValues: true
   propertiesTableName: ${self:provider.stage}-properties-table
-  webpack:
-  webpackConfig: 'webpack.config.js'
-  includeModules: true
-  packager: 'npm'
-  excludeFiles: src/**/*.test.ts
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap: true
+    target: node20
+    platform: node
   prune:
-  automatic: true
-  number: 5
+    automatic: true
+    number: 5
 
 functions:
   getProperties:
@@ -68,8 +68,7 @@ functions:
           cors: true
 
 plugins:
-  - serverless-webpack
-  - serverless-pseudo-parameters
+  - serverless-esbuild
   - serverless-prune-plugin
   - serverless-dynamodb-local
   - serverless-offline

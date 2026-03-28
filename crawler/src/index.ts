@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { AbstractAdapter } from "./adapters/abstract-adapter";
-import chalk from 'chalk';
+import p from 'picocolors';
 import Crawler from 'crawler';
 import { Database } from "./utils/db";
 import adapterList from './adapters/adapter.enum';
@@ -17,11 +17,11 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
             if (url.indexOf(adapters[i].baseUrl) === -1) {
                 url = (adapters[i].baseUrl + url).replace('//', '/').replace('https:/', 'https://');
             }
-            console.log(chalk.green('[INFO] ') + 'Queue URL ' + url);
+            console.log(p.green('[INFO] ') + 'Queue URL ' + url);
             crawler.queue(url);
             return true;
         } else {
-            console.log(chalk.green('[INFO] ') + 'Don\'t Queue URL ' + url);
+            console.log(p.green('[INFO] ') + 'Don\'t Queue URL ' + url);
         }
     }
     return false;
@@ -40,8 +40,8 @@ async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Pr
 
 function initiateCrawl(crawler: any, adapters: AbstractAdapter[]): void {
     for (let i = 0; i < adapters.length; i++) {
-        console.log(chalk.green('[INFO] ') + 'Queue ' + adapters[i].baseUrl);
-        console.log(chalk.green('[INFO] ') + 'Queue ' + adapters[i].seedUrl);
+        console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].baseUrl);
+        console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].seedUrl);
         crawler.queue(adapters[i].baseUrl);
         crawler.queue(adapters[i].seedUrl);
     }
@@ -64,7 +64,7 @@ async function start() {
         maxConnections: 1,
         callback: async (error: Error, res: any, done: Function) => {
             if (error) {
-                console.log(chalk.red(error));
+                console.log(p.red(String(error)));
             } else {
                 await queueLinks(res.$, crawler, adapters);
                 const adapter = getAdapter(res.request.uri.href);
@@ -73,7 +73,7 @@ async function start() {
                         let property = await adapter.parseData(res);
                         await adapter.store(property);
                     } catch (e) {
-                        console.log(chalk.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);
+                        console.log(p.red('[ERROR] ' + typeof adapter) + ' Property is invalid', e);
                     }
                 }
             }

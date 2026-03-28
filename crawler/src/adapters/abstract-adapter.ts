@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import * as Joi from '@hapi/joi';
+import Joi from 'joi';
 import { Database } from "../utils/db";
 import { v4 as uuidv4 } from 'uuid';
 
