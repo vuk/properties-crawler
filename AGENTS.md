@@ -37,13 +37,13 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 - `validateLink` / `validateListing` — **different concerns**: discovery vs detail page
 - `shouldReturn` — env-driven filters (`MIN_*`, `MAX_*`, `NO_ATTIC`, `NO_BASEMENT`); **note**: `isType` returns `this` or `null` but is typed as `AbstractAdapter` in the base class.
 
-`**Property`** uses numeric enums `PropertyType` and `ServiceType` (TypeScript numeric enums → stored as `SMALLINT` in Postgres), plus `location` as `SerbianMunicipality` (integer LAU code; `crawler/src/adapters/serbian-municipality.ts`). When the enum cannot be resolved, `rawLocation` holds scraped free text (`raw_location` in Postgres).
+`**Property`** uses numeric enums `PropertyType` and `ServiceType` (TypeScript numeric enums → stored as `SMALLINT` in Postgres), plus `location` as `SerbianMunicipality` (integer LAU code; `crawler/src/adapters/serbian-municipality.ts`). `rawLocation` holds scraped free text from `getRawLocationText` (`raw_location` in Postgres) whenever non-empty, including when `location` resolved successfully.
 
 ## PostgreSQL and environment
 
 - **Connection**: `**DATABASE_URL`** (e.g. `postgresql://postgres:postgres@localhost:5432/properties`) for both crawler and backend.
 - **SSL**: set `**DATABASE_SSL=true`** when the server requires TLS (typical for managed cloud Postgres).
-- **Table** `properties`: `id` (PK, text UUID), unique `property_url`, numeric fields for enums and measures, `rooms` as `DOUBLE PRECISION` (fractional counts from some sites), `location` (`SMALLINT`, Serbian municipality/city enum), optional `raw_location` (`TEXT`) when `location` is unknown; index on `property_type` for listing queries. On connect, the crawler adds missing columns (`location`, `raw_location`) and migrates legacy integer `rooms` to float when needed.
+- **Table** `properties`: `id` (PK, text UUID), unique `property_url`, numeric fields for enums and measures, `rooms` as `DOUBLE PRECISION` (fractional counts from some sites), `location` (`SMALLINT`, Serbian municipality/city enum), optional `raw_location` (`TEXT`) for the original scraped location text when present; index on `property_type` for listing queries. On connect, the crawler adds missing columns (`location`, `raw_location`) and migrates legacy integer `rooms` to float when needed.
 - **Crawler**: must set `DATABASE_URL` before `Database.connect()`.
 - **Backend container / host**: set `DATABASE_URL` (and optional `PORT`, default **3000**; `DATABASE_SSL=true` when required). No AWS Lambda in this stack.
 - **Docker**: repo root `docker compose up -d --build` runs DB + backend + crawler; `cd backend && npm run start:db` starts **only** Postgres; `npm run start:compose` starts all three from `backend/`.

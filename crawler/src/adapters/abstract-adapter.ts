@@ -104,7 +104,7 @@ export abstract class AbstractAdapter {
     abstract validateListing(url: string): boolean;
 
     /**
-     * Best-effort location strings from the page (or URL) for persistence when enum resolution fails.
+     * Best-effort location strings from the page (or URL); persisted as rawLocation when non-empty.
      */
     getRawLocationText(entry: any): string {
         return `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`
@@ -140,7 +140,7 @@ export abstract class AbstractAdapter {
         const rawLocationText = this.getRawLocationText(entry);
         const location = this.getLocation(entry);
         const rawLocation =
-            location === SerbianMunicipality.UNKNOWN && rawLocationText.length > 0
+            rawLocationText.length > 0
                 ? rawLocationText.slice(0, RAW_LOCATION_MAX_LEN)
                 : null;
 
