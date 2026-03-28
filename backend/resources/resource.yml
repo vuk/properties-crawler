@@ -1,2 +1,0 @@
-# Data is stored in PostgreSQL (see ../sql/schema.sql). Set DATABASE_URL in the environment.
-Resources: {}

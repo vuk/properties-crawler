@@ -6,17 +6,17 @@ Application is intended to crawl realestate ads from different websites and appl
 
 * Database: PostgreSQL (`pg` in Node; schema in `sql/schema.sql`)
 * Framework: NodeJS
-* Backend: Lambda functions (with Serverless)
+* Backend: Node HTTP API (Express, Docker-friendly)
 
 ## Development
 
-**Full stack in Docker** (Postgres + Serverless Offline API + crawler) from the repo root:
+**Full stack in Docker** (Postgres + properties API + crawler + optional frontend) from the repo root:
 
 ```bash
 docker compose up -d --build
 ```
 
-- API (default stage `dev`): `http://localhost:3000/dev/properties/`
+- API: `http://localhost:3000/properties/` (health: `http://localhost:3000/health`)
 - Postgres on host port `5432`
 - DB web UI (Adminer, Postgres-compatible): `http://localhost:8080` — system **PostgreSQL**, server **postgres**, user **postgres**, password **postgres**, database **properties**
 

@@ -74,6 +74,13 @@ function singleInfoValue($: any, root: any, labelNeedle: string): string {
   return out;
 }
 
+/** City/municipality line in the contact block, e.g. `<div class="contact"><div class="address">Užice</div>…`. */
+function contactAddressText($: any, root: any): string {
+  const scoped = root.find(".contact .address").first().text().replace(/\s+/g, " ").trim();
+  if (scoped) return scoped;
+  return $(".contact .address").first().text().replace(/\s+/g, " ").trim();
+}
+
 function galleryImageSrc($: any, entry: any): string {
   const $img = entry.$(".galllery ul li").first().find("img").first();
   const lazy = ($img.attr("data-lazy-src") || "").trim();
@@ -246,21 +253,25 @@ export class NovostioglasiAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
+    const $ = entry.$;
     const root = entry.$(".oglas-single");
     const loc =
-      singleInfoValue(entry.$, root, "lokacija") ||
-      singleInfoValue(entry.$, root, "grad") ||
-      singleInfoValue(entry.$, root, "mesto") ||
+      singleInfoValue($, root, "lokacija") ||
+      singleInfoValue($, root, "grad") ||
+      singleInfoValue($, root, "mesto") ||
+      contactAddressText($, root) ||
       "";
     return loc.trim() || super.getRawLocationText(entry);
   }
 
   getLocation(entry: any): SerbianMunicipality {
+    const $ = entry.$;
     const root = entry.$(".oglas-single");
     const loc =
-      singleInfoValue(entry.$, root, "lokacija") ||
-      singleInfoValue(entry.$, root, "grad") ||
-      singleInfoValue(entry.$, root, "mesto") ||
+      singleInfoValue($, root, "lokacija") ||
+      singleInfoValue($, root, "grad") ||
+      singleInfoValue($, root, "mesto") ||
+      contactAddressText($, root) ||
       "";
     const hit = resolveSerbianMunicipality(loc);
     if (hit !== SerbianMunicipality.UNKNOWN) return hit;

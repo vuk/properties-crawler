@@ -161,12 +161,19 @@ function parseLocationIds(
     return { ok: true, ids };
 }
 
-interface HttpEvent {
-    queryStringParameters?: Record<string, string> | null;
+export interface GetPropertiesQueryInput {
+    queryStringParameters?: Record<string, string | undefined> | null;
     multiValueQueryStringParameters?: Record<string, string[]> | null;
 }
 
-export const handler = async (event: HttpEvent) => {
+export type GetPropertiesHttpResult = {
+    statusCode: number;
+    body: string;
+};
+
+export async function getPropertiesResponse(
+    event: GetPropertiesQueryInput,
+): Promise<GetPropertiesHttpResult> {
     const qp = event.queryStringParameters ?? {};
     const mqp = event.multiValueQueryStringParameters;
 
@@ -332,4 +339,4 @@ export const handler = async (event: HttpEvent) => {
             }),
         };
     }
-};
+}

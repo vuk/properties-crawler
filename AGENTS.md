@@ -1,11 +1,11 @@
 # Agent instructions — properties-crawler
 
-This repository mixes **older patterns** (site-specific Cheerio scraping, `crawler` v1) with **modernized tooling** (TypeScript 5.9, **PostgreSQL** via `pg`, Serverless Framework 3, Lambda **Node.js 20**). Expect fragile selectors and small inconsistencies between packages. **Prefer small, targeted changes** when fixing or extending.
+This repository mixes **older patterns** (site-specific Cheerio scraping, `crawler` v1) with **modernized tooling** (TypeScript 5.9, **PostgreSQL** via `pg`, **Node.js 20**). Expect fragile selectors and small inconsistencies between packages. **Prefer small, targeted changes** when fixing or extending.
 
 ## What this project does
 
 - **Goal** (from product intent): crawl real-estate listings from multiple Serbian sites, apply **shared filters** (rooms, area, floor, price, attic/basement rules), persist matches, and notify (e.g. email — see `Readme.md`; not all of that may be implemented in code).
-- **Implemented today**: a **Node crawler** (`crawler/`) walks links with the `[crawler](https://www.npmjs.com/package/crawler)` package and Cheerio-loaded pages; **site-specific adapters** map HTML to a common `Property` shape and write to **PostgreSQL**. A **Serverless backend** (`backend/`) exposes at least one HTTP handler that reads from the same database.
+- **Implemented today**: a **Node crawler** (`crawler/`) walks links with the `[crawler](https://www.npmjs.com/package/crawler)` package and Cheerio-loaded pages; **site-specific adapters** map HTML to a common `Property` shape and write to **PostgreSQL**. A **standalone Express API** (`backend/`) serves `GET /properties/` (and `GET /health`) from the same database.
 
 ## Repository layout
 
@@ -16,10 +16,9 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 | `crawler/src/adapters/`                    | One class per source site, extending `AbstractAdapter`. Registration list: `adapter.enum.ts`.                                                                                                                                                       |
 | `crawler/src/utils/db.ts`                  | `**pg` `Pool`** singleton; `putProperty` (`getItemByURL(propertyUrl)` then `UPDATE` by `property_url` or `INSERT`; keeps existing `id` on update), `getItemByURL`, `getItemById` (`id` + `property_type`, default `property_type` 0). On `connect()`, runs `CREATE TABLE IF NOT EXISTS` for local bootstrap. |
 | `sql/schema.sql`                           | Canonical DDL for the `properties` table (optional if you rely on crawler auto-create).                                                                                                                                                             |
-| `docker-compose.yml`                       | **postgres** (16-alpine), **adminer** (web UI on **8080**, Postgres — not phpMyAdmin), **backend** (Serverless Offline **3000**), **crawler**. DB user/password `postgres`, database `properties`.                                                  |
+| `docker-compose.yml`                       | **postgres** (16-alpine), **adminer** (web UI on **8080**, Postgres — not phpMyAdmin), **backend** (Express on **3000**), optional **frontend**, **crawler**. DB user/password `postgres`, database `properties`.                                    |
 | `crawler/Dockerfile`, `backend/Dockerfile` | Production-style images; compose uses internal hostname `**postgres`** for `DATABASE_URL`.                                                                                                                                                          |
-| `backend/`                                 | Serverless Framework service (`serverless.yml`), **esbuild** via `serverless-esbuild`; `src/functions/` for Lambdas.                                                                                                                                |
-| `backend/resources/resource.yml`           | Placeholder (`Resources: {}`); no AWS-managed database in this stack.                                                                                                                                                                               |
+| `backend/`                                 | Express app: entry `src/server.ts`, **esbuild** bundle to `dist/server.js` (`esbuild.config.mjs`). Listing logic in `src/functions/get-properties.ts` (`getPropertiesResponse`).                                                                     |
 
 
 **Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi).
@@ -46,22 +45,22 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 - **SSL**: set `**DATABASE_SSL=true`** when the server requires TLS (typical for managed cloud Postgres).
 - **Table** `properties`: `id` (PK, text UUID), unique `property_url`, numeric fields for enums and measures, `rooms` as `DOUBLE PRECISION` (fractional counts from some sites), `location` (`SMALLINT`, Serbian municipality/city enum), optional `raw_location` (`TEXT`) when `location` is unknown; index on `property_type` for listing queries. On connect, the crawler adds missing columns (`location`, `raw_location`) and migrates legacy integer `rooms` to float when needed.
 - **Crawler**: must set `DATABASE_URL` before `Database.connect()`.
-- **Backend Lambda**: set `DATABASE_URL` in the function environment (deploy with `DATABASE_URL` in your shell or CI secrets). If the DB is in a VPC, configure Lambda VPC + security groups accordingly; this repo does not provision RDS.
+- **Backend container / host**: set `DATABASE_URL` (and optional `PORT`, default **3000**; `DATABASE_SSL=true` when required). No AWS Lambda in this stack.
 - **Docker**: repo root `docker compose up -d --build` runs DB + backend + crawler; `cd backend && npm run start:db` starts **only** Postgres; `npm run start:compose` starts all three from `backend/`.
 
-**Backend handler**: `get-properties.ts` uses `**process.env.DATABASE_URL`** and returns paginated `{ items, page, pageSize, total, totalPages, lastEvaluatedKey: null }` and accepts query filters such as `serviceType=sale|rent|all`, `propertyType=apartment|house|all`, and optional `locationIds` (comma-separated Serbian municipality integer codes, matches `properties.location`).
+**Properties API** (`getPropertiesResponse` in `get-properties.ts`): uses `**process.env.DATABASE_URL**` and returns paginated `{ items, page, pageSize, total, totalPages, lastEvaluatedKey: null }` with query filters such as `serviceType=sale|rent|all`, `propertyType=apartment|house|all`, and optional `locationIds` (comma-separated Serbian municipality integer codes, matches `properties.location`).
 
 ## Dependencies and versions (high level)
 
 - **Crawler**: `joi` (not `@hapi/joi`), `picocolors`, **crawler ^1.5** (v2 is ESM-only — not used here), `**pg`**. Build is `**npm run build` → esbuild** (single `dist/index.js` + sourcemap). Use `**npm run typecheck`** (`tsc --noEmit`) for type-only checks.
-- **Backend**: **Serverless 3** + **serverless-offline ^13.9** (v14 requires Serverless 4). Bundling uses `**serverless-esbuild`** (`custom.esbuild` in `serverless.yml`).
+- **Backend**: **Express 4**, **esbuild** (`npm run build` → `dist/server.js`); local dev: `npm run dev` (**tsx** watch).
 - **No automated tests** in `package.json` scripts (placeholders only).
 - Site HTML/CSS selectors in adapters **will break** when sites redesign.
 
 ## Commands (reference)
 
 - **Crawler**: `cd crawler && npm install && npm run build && npm start` — or `npm run start:offline` for **tsx**. Optional: `npm run typecheck` before build.
-- **Backend**: `cd backend && npm install`; `npm run start:db` starts only Postgres; `npm run start:compose` or repo-root `docker compose up -d --build` runs the full stack; or run `serverless offline` on the host for HTTP.
+- **Backend**: `cd backend && npm install && npm run build && npm start` (needs `DATABASE_URL`); `npm run start:db` starts only Postgres; `npm run start:compose` or repo-root `docker compose up -d --build` runs the full stack.
 
 ## Conventions when changing code
 
@@ -75,6 +74,6 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 2. `crawler/src/adapters/abstract-adapter.ts` — domain model and validation
 3. `crawler/src/adapters/adapter.enum.ts` — which sites are active
 4. `crawler/src/utils/db.ts` — persistence
-5. `sql/schema.sql` + `backend/serverless.yml` — DB shape and Lambda config
+5. `sql/schema.sql` + `backend/src/server.ts` — DB shape and HTTP routes
 
 When this file drifts from the code (new adapters, env renames, SDK migration), **update `AGENTS.md` in the same change** so future sessions stay accurate.
