@@ -2,6 +2,9 @@ import dotenv from "dotenv";
 import Joi from 'joi';
 import { Database } from "../utils/db";
 import { v4 as uuidv4 } from 'uuid';
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
+
+export { SerbianMunicipality };
 
 dotenv.config();
 
@@ -30,6 +33,8 @@ export interface Property {
     price: number,
     unitPrice: number,
     image: string,
+    /** Serbian municipality / city (LAU), `SerbianMunicipality` enum as integer. */
+    location: SerbianMunicipality,
     oldPrice?: number
 }
 
@@ -49,7 +54,8 @@ export abstract class AbstractAdapter {
             rooms: Joi.number().required(),
             price: Joi.number().required(),
             unitPrice: Joi.number().required(),
-            image: Joi.string()
+            image: Joi.string(),
+            location: Joi.number().integer().required(),
         }).unknown(true);
 
     isType(url: string): AbstractAdapter {
@@ -91,6 +97,15 @@ export abstract class AbstractAdapter {
 
     abstract validateListing(url: string): boolean;
 
+    /**
+     * Derive LAU location from structured fields when possible; default uses title, description, and URL.
+     */
+    getLocation(entry: any): SerbianMunicipality {
+        return resolveSerbianMunicipality(
+            `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`,
+        );
+    }
+
     shouldReturn(entry: any): boolean {
         if (process.env.NO_ATTIC && this.getFloors(entry) === this.getFloor(entry)) {
             return false;
@@ -123,6 +138,7 @@ export abstract class AbstractAdapter {
             image: this.getImage(entry),
             propertyType: this.getType(entry),
             serviceType: this.getServiceType(entry),
+            location: this.getLocation(entry),
         };
 
         await this.validationSchema.validateAsync(property);

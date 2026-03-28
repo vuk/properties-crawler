@@ -1,4 +1,5 @@
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /** Minimal shape from KP Next.js `__NEXT_DATA__` → `initialReduxState.ad.byId`. */
 type KpAdAttribute = {
@@ -251,5 +252,27 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
     if (g.includes("kuć") || g.includes("kuca") || g.includes("vikend") || g.includes("seoska"))
       return PropertyType.HOUSE;
     return PropertyType.HOUSE;
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    const ad = this.ad(entry);
+    if (ad) {
+      for (const code of [
+        "grad",
+        "mesto",
+        "lokacija",
+        "opstina",
+        "city",
+        "realEstateCity",
+        "realEstatePlace",
+      ]) {
+        const v = attrFirst(ad, code);
+        if (v) {
+          const r = resolveSerbianMunicipality(v);
+          if (r !== SerbianMunicipality.UNKNOWN) return r;
+        }
+      }
+    }
+    return super.getLocation(entry);
   }
 }

@@ -35,6 +35,7 @@ function rowToItem(row: Record<string, unknown>) {
         price: row.price,
         unitPrice: row.unit_price,
         image: row.image,
+        location: row.location,
         ...(row.old_price != null ? { oldPrice: row.old_price } : {}),
     };
 }

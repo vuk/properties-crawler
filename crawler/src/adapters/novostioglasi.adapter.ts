@@ -1,4 +1,5 @@
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /**
  * Novosti Oglasi — real estate lives under /nekretnine/.
@@ -204,5 +205,17 @@ export class NovostioglasiAdapter extends AbstractAdapter {
     } catch {
       return false;
     }
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    const root = entry.$(".oglas-single");
+    const loc =
+      singleInfoValue(entry.$, root, "lokacija") ||
+      singleInfoValue(entry.$, root, "grad") ||
+      singleInfoValue(entry.$, root, "mesto") ||
+      "";
+    const hit = resolveSerbianMunicipality(loc);
+    if (hit !== SerbianMunicipality.UNKNOWN) return hit;
+    return super.getLocation(entry);
   }
 }

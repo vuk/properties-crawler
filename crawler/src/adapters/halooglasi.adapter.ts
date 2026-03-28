@@ -1,4 +1,5 @@
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /** Merged shape: top-level classified + flattened OtherFields from Halo oglasi HTML. */
 type HaloClassified = {
@@ -204,5 +205,22 @@ export class HalooglasiAdapter extends AbstractAdapter {
     const t = (this.classified(entry)?.tip_nekretnine_s ?? "").toLowerCase();
     if (t.includes("kuć") || t.includes("kuca")) return PropertyType.HOUSE;
     return PropertyType.APARTMENT;
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    try {
+      const u = new URL(this.getUrl(entry));
+      const parts = u.pathname.split("/").filter(Boolean);
+      for (let i = 2; i < parts.length; i++) {
+        const seg = parts[i];
+        if (/^(prodaja|izdavanje)-/.test(seg)) continue;
+        if (/^\d{10,}$/.test(seg)) continue;
+        const r = resolveSerbianMunicipality(seg.replace(/-/g, " "));
+        if (r !== SerbianMunicipality.UNKNOWN) return r;
+      }
+    } catch {
+      /* ignore */
+    }
+    return super.getLocation(entry);
   }
 }

@@ -1,4 +1,5 @@
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /** Ad detail: https://www.nekretnine.rs/stambeni-objekti/stanovi/{slug}/{offerId}/ */
 const DETAIL_PATH = /^\/stambeni-objekti\/stanovi\/[^/]+\/[A-Za-z0-9_-]+\/?$/;
@@ -223,5 +224,22 @@ export class NekretnineAdapter extends AbstractAdapter {
       }
     });
     return out;
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    const blob = [
+      this.labelValue(entry, "lokacija"),
+      this.labelValue(entry, "grad"),
+      this.labelValue(entry, "mesto"),
+      this.labelValue(entry, "naselje"),
+      this.findBaseInfDd(entry, "lokacija"),
+      this.findBaseInfDd(entry, "grad"),
+      this.findBaseInfDd(entry, "mesto"),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const hit = resolveSerbianMunicipality(blob);
+    if (hit !== SerbianMunicipality.UNKNOWN) return hit;
+    return super.getLocation(entry);
   }
 }

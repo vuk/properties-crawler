@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS properties (
     price DOUBLE PRECISION NOT NULL,
     unit_price DOUBLE PRECISION NOT NULL,
     image TEXT NOT NULL DEFAULT '',
-    old_price DOUBLE PRECISION NULL
+    old_price DOUBLE PRECISION NULL,
+    location SMALLINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS properties_property_type_idx ON properties (property_type);

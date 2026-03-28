@@ -1,4 +1,5 @@
 import {AbstractAdapter, PropertyType, ServiceType} from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 export class RealiticaAdapter extends AbstractAdapter {
   baseUrl: string = 'https://www.4zida.rs/';
@@ -116,5 +117,28 @@ export class RealiticaAdapter extends AbstractAdapter {
         }
       });
     return propertyType;
+  }
+
+  getLocation(entry: any): SerbianMunicipality {
+    let loc = "";
+    const tryRow = (row: any): boolean => {
+      const dt = entry.$(row).children(".dl-horozontal").children("dt").text().toLowerCase();
+      if (dt.includes("grad") || dt.includes("lokacija") || dt.includes("mesto")) {
+        loc = entry.$(row).children(".dl-horozontal").children("dd").text().trim();
+        return true;
+      }
+      return false;
+    };
+    entry.$(".base-inf .row .col-sm-6").each((_i: number, row: any) => {
+      if (tryRow(row)) return false;
+    });
+    if (!loc) {
+      entry.$(".row.pb-3 .col-sm-6").each((_i: number, row: any) => {
+        if (tryRow(row)) return false;
+      });
+    }
+    const hit = resolveSerbianMunicipality(loc);
+    if (hit !== SerbianMunicipality.UNKNOWN) return hit;
+    return super.getLocation(entry);
   }
 }

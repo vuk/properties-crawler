@@ -1,4 +1,5 @@
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /**
  * 4zida.rs (Next.js): listing grids and SEO meta are server-rendered; the in-page
@@ -196,5 +197,14 @@ export class CetrizidaAdapter extends AbstractAdapter {
         const segs = this.listingPathSegments(this.getUrl(entry));
         const root = (segs[0] || "").toLowerCase();
         return root.includes("-kuca") ? PropertyType.HOUSE : PropertyType.APARTMENT;
+    }
+
+    getLocation(entry: any): SerbianMunicipality {
+        const segs = this.listingPathSegments(this.getUrl(entry));
+        if (segs.length >= 2) {
+            const fromSlug = resolveSerbianMunicipality(segs[1].replace(/-/g, " "));
+            if (fromSlug !== SerbianMunicipality.UNKNOWN) return fromSlug;
+        }
+        return super.getLocation(entry);
     }
 }
