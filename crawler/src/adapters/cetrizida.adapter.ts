@@ -1,120 +1,200 @@
-import {AbstractAdapter, PropertyType, ServiceType} from "./abstract-adapter";
+import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
+
+/**
+ * 4zida.rs (Next.js): listing grids and SEO meta are server-rendered; the in-page
+ * detail UI is mostly client-side. Parsers use <title>, meta description, og:image,
+ * and the URL (transaction + structure slug + 24-char id).
+ *
+ * Listing index URLs: /{prodaja|izdavanje}-{stanova|kuca}[/{lokacija}][?strana=n&…]
+ * Ad detail URLs: /{transaction}-{type}/{mesto}/{struktura}/{id}
+ */
+const LISTING_PREFIX = /^(prodaja|izdavanje)-(stanova|kuca)$/i;
+const OBJECT_ID = /^[a-f0-9]{24}$/i;
+
+function pathSegments(url: string, baseUrl: string): string[] {
+    try {
+        const u = url.startsWith("http") ? new URL(url) : new URL(url, baseUrl);
+        return u.pathname.split("/").filter(Boolean);
+    } catch {
+        return [];
+    }
+}
+
+function metaContent($: any, name: string): string {
+    return ($( `meta[name="${name}"]` ).attr("content") || "").trim();
+}
+
+function ogContent($: any, property: string): string {
+    return ($( `meta[property="${property}"]` ).attr("content") || "").trim();
+}
+
+function parseEuroPrice(text: string): number {
+    const m = text.match(/([\d.]+)\s*€/);
+    if (!m) return NaN;
+    return parseInt(m[1].replace(/\./g, ""), 10);
+}
+
+function parseAreaFromText(text: string): number {
+    const m =
+        text.match(/(\d+)\s*m\s*[²2]/i) ||
+        text.match(/(\d+)\s*m²/i);
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+function parseFloorFromDescription(desc: string): number {
+    const lower = desc.toLowerCase();
+    if (/visokom\s+prizemlj|prizemlj|suterenu/.test(lower)) {
+        return 0;
+    }
+    const m = lower.match(/na\s+(\d+)\.\s*sprat/);
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+function parseTotalFloorsFromDescription(desc: string): number {
+    const m = desc.match(/(\d+)\s*\/\s*(\d+)\s*sprat/i);
+    if (m) return parseInt(m[2], 10);
+    return 99;
+}
+
+function roomsFromStanStructureSlug(slug: string): number {
+    const s = slug.toLowerCase();
+    const rules: [string, number][] = [
+        ["garsonjera", 1],
+        ["cetvoroiposoban", 4],
+        ["cetvorosoban", 4],
+        ["petoiposoban", 5],
+        ["petosoban", 5],
+        ["sestosoban", 6],
+        ["šestosoban", 6],
+        ["dvoiposoban", 2],
+        ["dvosoban", 2],
+        ["troiposoban", 3],
+        ["trosoban", 3],
+        ["jednoiposoban", 1],
+        ["jednosoban", 1],
+    ];
+    for (const [key, n] of rules) {
+        if (s.includes(key)) return n;
+    }
+    const head = s.split("-")[0];
+    const digits = head.match(/^(\d+)/);
+    return digits ? parseInt(digits[1], 10) : 1;
+}
+
+function roomsFromHouseDescription(title: string, desc: string): number {
+    const blob = `${title} ${desc}`.toLowerCase();
+    const m = blob.match(/(\d+)\s*sob/);
+    return m ? parseInt(m[1], 10) : 1;
+}
 
 export class CetrizidaAdapter extends AbstractAdapter {
-    baseUrl: string = 'https://www.4zida.rs/';
-    seedUrl: string[] = ['https://www.4zida.rs/prodaja-stanova'];
+    baseUrl: string = "https://www.4zida.rs/";
+    seedUrl: string[] = [
+        "https://www.4zida.rs/prodaja-stanova",
+        "https://www.4zida.rs/izdavanje-stanova/beograd",
+    ];
 
     isType(url: string): CetrizidaAdapter {
-        if (url.indexOf(this.baseUrl) !== -1) {
+        if (url.indexOf("4zida.rs") !== -1) {
             return this;
         }
         return null;
     }
 
+    private listingPathSegments(url: string): string[] {
+        return pathSegments(url, this.baseUrl);
+    }
+
     getArea(entry: any): number {
-        let area = 0;
-        entry.$('.base-inf')
-            .first().children('.row')
-            .first().children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('kvadratura') !== -1
-                    || entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('korisna površina do') !== -1) {
-                    area = parseInt(entry.$(row).children('.dl-horozontal').children('dd').text().trim());
-                }
-            });
-        return area;
+        const $ = entry.$;
+        const desc = metaContent($, "description");
+        const title = $("title").first().text().trim();
+        return parseAreaFromText(desc) || parseAreaFromText(title);
     }
 
     getDescription(entry: any): string {
-        return entry.$('.cms-content-inner').text().trim();
+        const $ = entry.$;
+        return metaContent($, "description");
     }
 
     getFloor(entry: any): number {
-        let floor = null;
-        entry.$('.row.pb-3')
-            .children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('sprat') !== -1) {
-                    floor = entry.$(row).children('.dl-horozontal').children('dd').text();
-                    if (floor.toString() === 'pr' || isNaN(parseInt(floor))) {
-                        floor = '0';
-                    }
-                }
-            });
-        return parseInt(floor);
+        return parseFloorFromDescription(this.getDescription(entry));
     }
 
     getFloors(entry: any): number {
-        let floors = null;
-        entry.$('.row.pb-3')
-            .children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('ukupan brој spratova') !== -1) {
-                    floors = entry.$(row).children('.dl-horozontal').children('dd').text();
-                    if (floors.toString() === 'pr' || isNaN(parseInt(floors))) {
-                        floors = '0';
-                    }
-                }
-            });
-        return parseInt(floors);
+        return parseTotalFloorsFromDescription(this.getDescription(entry));
     }
 
     getImage(entry: any): string {
-        return entry.$('#property-d-1').children('.item').first().children('img').attr('src');
+        const $ = entry.$;
+        return ogContent($, "og:image") || "";
     }
 
     getPrice(entry: any): number {
-        let price = entry.$('.label-value-primary')
-            .children('.mt-auto').text().replace(' ', '');
-        return parseInt(price);
+        const $ = entry.$;
+        const title = $("title").first().text().trim();
+        const desc = metaContent($, "description");
+        return parseEuroPrice(title) || parseEuroPrice(desc);
     }
 
     getRooms(entry: any): number {
-        let rooms = null;
-        entry.$('.row.pb-3')
-            .children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('ukupan broj soba') !== -1) {
-                    rooms = entry.$(row).children('.dl-horozontal').children('dd').text();
-                }
-            });
-        return rooms;
+        const href = this.getUrl(entry);
+        const segs = this.listingPathSegments(href);
+        if (segs.length < 4) return 1;
+        const kind = segs[0].toLowerCase();
+        const structureSlug = segs[2];
+        if (kind.endsWith("-kuca")) {
+            const title = entry.$("title").first().text().trim();
+            return roomsFromHouseDescription(title, this.getDescription(entry));
+        }
+        return roomsFromStanStructureSlug(structureSlug);
     }
 
     getTitle(entry: any): string {
-        return entry.$('h1.deatil-title').text();
+        const $ = entry.$;
+        const t = ogContent($, "og:title");
+        if (t) return t;
+        return $("title").first().text().trim();
     }
 
     validateLink(url: string): boolean {
-        return (url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/') !== -1 || url.indexOf('stambeni-objekti/stanovi/izdavanje-prodaja/prodaja/lista/') !== -1) && url.indexOf('?order') === -1;
+        if (!url || url.includes("/blog/") || url.includes("/agencije/")) {
+            return false;
+        }
+        const segs = pathSegments(url, this.baseUrl);
+        if (segs.length >= 1 && segs.length <= 2 && LISTING_PREFIX.test(segs[0])) {
+            return true;
+        }
+        // Ad detail URLs must be queued when linked from listing grids (4 path segments).
+        if (this.validateListing(url)) {
+            return true;
+        }
+        return false;
     }
 
     validateListing(url: string): boolean {
-        return url.indexOf(this.baseUrl) !== -1 && url.indexOf('/stambeni-objekti/stanovi/') !== -1 && url.indexOf('/izdavanje-prodaja/') === -1 && url.indexOf('/grad/') === -1 && url.indexOf('/po-stranici/') === -1;
+        if (!url || url.indexOf("4zida.rs") === -1) {
+            return false;
+        }
+        const segs = pathSegments(url, this.baseUrl);
+        if (segs.length !== 4) {
+            return false;
+        }
+        if (!LISTING_PREFIX.test(segs[0])) {
+            return false;
+        }
+        return OBJECT_ID.test(segs[3]);
     }
 
     getServiceType(entry: any): ServiceType {
-        let serviceType = null;
-        entry.$('.base-inf')
-            .first().children('.row')
-            .first().children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('transakcija') !== -1) {
-                    serviceType = entry.$(row).children('.dl-horozontal').children('dd').text().trim().toLowerCase() === 'prodaja' ? ServiceType.SALE : ServiceType.RENT;
-                }
-            });
-        return serviceType;
+        const segs = this.listingPathSegments(this.getUrl(entry));
+        const root = (segs[0] || "").toLowerCase();
+        return root.startsWith("prodaja") ? ServiceType.SALE : ServiceType.RENT;
     }
 
     getType(entry: any): PropertyType {
-        let propertyType = null;
-        entry.$('.row.pb-3')
-            .children('.col-sm-6')
-            .each((rowIndex: number, row: any) => {
-                if (entry.$(row).children('.dl-horozontal').children('dt').text().toLowerCase().indexOf('svrha korišćenja') !== -1) {
-                    propertyType = entry.$(row).children('.dl-horozontal').children('dd').text().toLowerCase() === 'stan' ? PropertyType.APARTMENT : PropertyType.HOUSE;
-                }
-            });
-        return propertyType;
+        const segs = this.listingPathSegments(this.getUrl(entry));
+        const root = (segs[0] || "").toLowerCase();
+        return root.includes("-kuca") ? PropertyType.HOUSE : PropertyType.APARTMENT;
     }
 }
