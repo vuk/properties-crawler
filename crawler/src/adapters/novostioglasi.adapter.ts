@@ -84,6 +84,21 @@ function galleryImageSrc($: any, entry: any): string {
   return (noscript || "").trim();
 }
 
+/** Last URL path segment as a readable fallback title (e.g. stan-355 → Stan 355). */
+function titleFromListingUrl(href: string): string {
+  try {
+    const u = new URL(href);
+    const parts = u.pathname.split("/").filter(Boolean);
+    const slug = parts[parts.length - 1] || "";
+    if (!slug || slug === "nekretnine") return "";
+    const words = slug.split("-").filter(Boolean);
+    if (words.length === 0) return "";
+    return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  } catch {
+    return "";
+  }
+}
+
 function detectServiceType(text: string): ServiceType {
   const t = text.toLowerCase();
   if (
@@ -148,7 +163,27 @@ export class NovostioglasiAdapter extends AbstractAdapter {
   }
 
   getTitle(entry: any): string {
-    return entry.$(".oglas-single h1").first().text().replace(/\s+/g, " ").trim();
+    const $ = entry.$;
+    const href = String(entry.request?.uri?.href ?? "");
+    const stripSite = (s: string) =>
+      s
+        .replace(/\s+/g, " ")
+        .replace(/\s*[-–|]\s*Novosti Oglasi\s*$/i, "")
+        .trim();
+    const pick = (raw: string): string => {
+      const t = stripSite(raw);
+      if (!t || /page not found/i.test(t)) return "";
+      return t;
+    };
+    const fromDom =
+      pick($(".oglas-single h1").first().text()) ||
+      pick($(".oglas-single .entry-title").first().text()) ||
+      pick($("h1.entry-title").first().text()) ||
+      pick($("article h1").first().text()) ||
+      pick($('meta[property="og:title"]').attr("content") || "") ||
+      pick($("title").first().text());
+    const fromUrl = titleFromListingUrl(href);
+    return fromDom || fromUrl || "Novosti oglas";
   }
 
   getDescription(entry: any): string {

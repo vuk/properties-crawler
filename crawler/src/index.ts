@@ -69,7 +69,12 @@ async function start() {
             } else {
                 await queueLinks(res.$, crawler, adapters);
                 const adapter = getAdapter(res.request.uri.href);
-                if (adapter && adapter.validateListing(res.request.uri.href)) {
+                const status = res.statusCode;
+                if (
+                    adapter &&
+                    adapter.validateListing(res.request.uri.href) &&
+                    (status === undefined || status < 400)
+                ) {
                     try {
                         let property = await adapter.parseData(res);
                         await adapter.store(property);
