@@ -127,7 +127,32 @@ export class Database {
 
     async putProperty(property: Property): Promise<void> {
         const existing = await this.getItemByURL(property.propertyUrl);
+        const row = [
+            property.title,
+            property.propertyType,
+            property.serviceType,
+            property.description,
+            property.area,
+            asDbInt(property.floor),
+            asDbInt(property.floors),
+            asDbFloat(property.rooms),
+            property.price,
+            property.unitPrice,
+            property.image,
+            property.oldPrice ?? null,
+            property.location,
+            property.rawLocation ?? null,
+        ];
         if (existing) {
+            await this.client.query(
+                `UPDATE properties SET
+                    title = $2, property_type = $3, service_type = $4, description = $5,
+                    area = $6, floor = $7, floors = $8, rooms = $9, price = $10,
+                    unit_price = $11, image = $12, old_price = $13, location = $14,
+                    raw_location = $15
+                WHERE property_url = $1`,
+                [property.propertyUrl, ...row],
+            );
             return;
         }
         await this.client.query(
@@ -136,24 +161,7 @@ export class Database {
                 area, floor, floors, rooms, price, unit_price, image, old_price, location,
                 raw_location
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-            [
-                property.id,
-                property.propertyUrl,
-                property.title,
-                property.propertyType,
-                property.serviceType,
-                property.description,
-                property.area,
-                asDbInt(property.floor),
-                asDbInt(property.floors),
-                asDbFloat(property.rooms),
-                property.price,
-                property.unitPrice,
-                property.image,
-                property.oldPrice ?? null,
-                property.location,
-                property.rawLocation ?? null,
-            ],
+            [property.id, property.propertyUrl, ...row],
         );
     }
 
