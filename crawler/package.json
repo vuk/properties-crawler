@@ -4,17 +4,17 @@
   "description": "",
   "main": "dist/index.js",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.750.0",
-    "@aws-sdk/lib-dynamodb": "^3.750.0",
     "cheerio": "^1.2.0",
     "crawler": "^1.5.0",
     "dotenv": "^17.3.1",
     "joi": "^18.1.1",
+    "pg": "^8.14.1",
     "picocolors": "^1.1.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@types/pg": "^8.11.11",
     "esbuild": "^0.27.4",
     "nodemon": "^3.1.10",
     "npm-run-all": "^4.1.5",
@@ -25,7 +25,7 @@
     "build": "node esbuild.config.mjs",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
-    "start:offline": "IS_OFFLINE=true tsx src/index.ts",
+    "start:offline": "tsx src/index.ts",
     "start:daemon": "nodemon dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "run-s build start",

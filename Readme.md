@@ -4,15 +4,34 @@ Application is intended to crawl realestate ads from different websites and appl
 
 ## Stack
 
-* Database: DynamoDB by Amazon
+* Database: PostgreSQL (`pg` in Node; schema in `sql/schema.sql`)
 * Framework: NodeJS
 * Backend: Lambda functions (with Serverless)
 
-## Development 
+## Development
 
-To run database run
+**Full stack in Docker** (Postgres + Serverless Offline API + crawler) from the repo root:
 
-``
+```bash
+docker compose up -d --build
+```
+
+- API (default stage `dev`): `http://localhost:3000/dev/properties/`
+- Postgres on host port `5432`
+- DB web UI (Adminer, Postgres-compatible): `http://localhost:8080` — system **PostgreSQL**, server **postgres**, user **postgres**, password **postgres**, database **properties**
+
+Postgres only (e.g. run crawler/backend on the host):
+
+```bash
+docker compose up -d postgres
+# or: cd backend && npm run start:db
+```
+
+Apply DDL if you prefer not to rely on the crawler’s `CREATE TABLE IF NOT EXISTS` on startup:
+
+```bash
+psql "$DATABASE_URL" -f sql/schema.sql
+```
 
 ## Environment
 
@@ -30,7 +49,8 @@ NO_BASEMENT=true
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
-PROPERTY_TABLE=
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/properties
+# DATABASE_SSL=true   # when your host requires TLS
 ```
 
 ## Sources for properties

@@ -20,9 +20,10 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
             console.log(p.green('[INFO] ') + 'Queue URL ' + url);
             crawler.queue(url);
             return true;
-        } else {
-            console.log(p.green('[INFO] ') + 'Don\'t Queue URL ' + url);
         }
+    }
+    if (process.env.CRAWLER_VERBOSE_LINKS === 'true') {
+        console.log(p.dim('[SKIP] ') + url);
     }
     return false;
 }

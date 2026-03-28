@@ -5,20 +5,22 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:db": "sls dynamodb start"
+    "start:db": "docker compose -f ../docker-compose.yml up -d postgres",
+    "start:compose": "docker compose -f ../docker-compose.yml up -d --build"
   },
   "author": "Vuk Stankovic",
   "license": "ISC",
+  "dependencies": {
+    "pg": "^8.14.1"
+  },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.750.0",
-    "@aws-sdk/lib-dynamodb": "^3.750.0",
     "@types/node": "^22.15.0",
+    "@types/pg": "^8.11.11",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "esbuild": "^0.27.4",
     "serverless": "^3.40.0",
     "serverless-domain-manager": "^10.0.0",
-    "serverless-dynamodb-local": "^0.2.40",
     "serverless-esbuild": "^1.57.0",
     "serverless-offline": "^13.9.0",
     "serverless-prune-plugin": "^2.1.0",

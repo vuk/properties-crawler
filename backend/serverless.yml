@@ -12,42 +12,15 @@ provider:
     AppRole: properties-service
     Environment: ${self:provider.stage}
   memorySize: 1024
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:BatchGetItem
-        - dynamodb:DeleteItem
-        - dynamodb:DescribeStream
-        - dynamodb:ListStreams
-        - dynamodb:StreamArn
-      Resource:
-        - "Fn::GetAtt": [ PropertiesTable, Arn ]
-        - Fn::Join:
-            - "/"
-            - - { "Fn::GetAtt": [ PropertiesTable, Arn ] }
-              - "index/*"
   environment:
     SERVICE_STAGE: ${self:provider.stage}
-    PROPERTIES_TABLE: ${self:custom.propertiesTableName}
-    DYNAMODB_LOCAL_PORT: 8080
+    DATABASE_URL: ${env:DATABASE_URL, ''}
 
 custom:
   serverless-offline:
     useChildProcesses: true
-  dynamodb:
-    start:
-      port: ${env:DYNAMODB_LOCAL_PORT, '8080'}
-      inMemory: true
-      heapInitial: 200m
-      heapMax: 1g
-      migrate: true
-      seed: true
-      convertEmptyValues: true
-  propertiesTableName: ${self:provider.stage}-properties-table
+    httpPort: 3000
+    host: 0.0.0.0
   esbuild:
     bundle: true
     minify: true
@@ -70,7 +43,6 @@ functions:
 plugins:
   - serverless-esbuild
   - serverless-prune-plugin
-  - serverless-dynamodb-local
   - serverless-offline
 
 resources:

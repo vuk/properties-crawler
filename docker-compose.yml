@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: properties
+    volumes:
+      - properties_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d properties']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin is MySQL-only; Adminer is the usual web UI for PostgreSQL in Compose.
+  adminer:
+    image: adminer:latest
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/properties
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/properties
+      MIN_ROOMS: '1'
+      MAX_ROOMS: '10'
+      MIN_AREA: '10'
+      MAX_AREA: '1000'
+      MIN_FLOOR: '0'
+      MAX_FLOOR: '40'
+      MIN_PRICE: '1000'
+      MAX_PRICE: '10000000'
+      NO_ATTIC: 'true'
+      NO_BASEMENT: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  properties_pgdata:

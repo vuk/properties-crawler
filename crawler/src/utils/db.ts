@@ -1,16 +1,52 @@
-import { DynamoDBClient, type DynamoDBClientConfig } from '@aws-sdk/client-dynamodb';
-import {
-    DynamoDBDocumentClient,
-    GetCommand,
-    PutCommand,
-    QueryCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { Property } from '../adapters/abstract-adapter';
+import { Pool } from 'pg';
+import { Property, PropertyType, ServiceType } from '../adapters/abstract-adapter';
+
+const CREATE_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS properties (
+    id TEXT PRIMARY KEY,
+    property_url TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL DEFAULT '',
+    property_type SMALLINT NOT NULL,
+    service_type SMALLINT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    area DOUBLE PRECISION NOT NULL,
+    floor INTEGER NOT NULL,
+    floors INTEGER NOT NULL,
+    rooms INTEGER NOT NULL,
+    price DOUBLE PRECISION NOT NULL,
+    unit_price DOUBLE PRECISION NOT NULL,
+    image TEXT NOT NULL DEFAULT '',
+    old_price DOUBLE PRECISION NULL
+)`;
+
+const CREATE_INDEX_SQL = `CREATE INDEX IF NOT EXISTS properties_property_type_idx ON properties (property_type)`;
+
+function rowToProperty(row: Record<string, unknown>): Property {
+    return {
+        id: String(row.id),
+        propertyUrl: String(row.property_url),
+        title: String(row.title ?? ''),
+        propertyType: Number(row.property_type) as PropertyType,
+        serviceType: Number(row.service_type) as ServiceType,
+        description: String(row.description ?? ''),
+        area: Number(row.area),
+        floor: Number(row.floor),
+        floors: Number(row.floors),
+        rooms: Number(row.rooms),
+        price: Number(row.price),
+        unitPrice: Number(row.unit_price),
+        image: String(row.image ?? ''),
+        ...(row.old_price != null && row.old_price !== ''
+            ? { oldPrice: Number(row.old_price) }
+            : {}),
+    };
+}
 
 export class Database {
     private static instance: Database;
+    private pool: Pool | undefined;
+
     private constructor() {}
-    private docClient: DynamoDBDocumentClient | undefined;
 
     public static getInstance(): Database {
         if (!this.instance) {
@@ -20,119 +56,77 @@ export class Database {
     }
 
     public async connect(): Promise<void> {
-        const config: DynamoDBClientConfig =
-            process.env.IS_OFFLINE === 'true'
-                ? {
-                      region: 'localhost',
-                      endpoint: 'http://localhost:8000',
-                      credentials: {
-                          accessKeyId: 'DEFAULT_ACCESS_KEY',
-                          secretAccessKey: 'DEFAULT_SECRET',
-                      },
-                  }
-                : {
-                      region: process.env.AWS_REGION,
-                      credentials:
-                          process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-                              ? {
-                                    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-                                }
-                              : undefined,
-                  };
-
-        const client = new DynamoDBClient(config);
-        this.docClient = DynamoDBDocumentClient.from(client, {
-            marshallOptions: { removeUndefinedValues: true },
+        const connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+            throw new Error('DATABASE_URL is not set');
+        }
+        this.pool = new Pool({
+            connectionString,
+            max: 5,
+            ssl:
+                process.env.DATABASE_SSL === 'true'
+                    ? { rejectUnauthorized: false }
+                    : undefined,
         });
+        await this.pool.query(CREATE_TABLE_SQL);
+        await this.pool.query(CREATE_INDEX_SQL);
     }
 
-    private get client(): DynamoDBDocumentClient {
-        if (!this.docClient) {
+    private get client(): Pool {
+        if (!this.pool) {
             throw new Error('Database not connected; call connect() first');
         }
-        return this.docClient;
+        return this.pool;
     }
 
     async putProperty(property: Property): Promise<void> {
-        let existing = await this.getItemByURL(property.propertyUrl);
-        if (!existing) {
-            existing = property;
+        const existing = await this.getItemByURL(property.propertyUrl);
+        if (existing) {
+            return;
         }
-        existing = this.prepareItem(existing) as Property;
-        const tableName = process.env.PROPERTY_TABLE;
-        if (!tableName) {
-            throw new Error('PROPERTY_TABLE is not set');
-        }
-        await this.client.send(
-            new PutCommand({
-                TableName: tableName,
-                Item: existing as any,
-            }),
+        await this.client.query(
+            `INSERT INTO properties (
+                id, property_url, title, property_type, service_type, description,
+                area, floor, floors, rooms, price, unit_price, image, old_price
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [
+                property.id,
+                property.propertyUrl,
+                property.title,
+                property.propertyType,
+                property.serviceType,
+                property.description,
+                property.area,
+                property.floor,
+                property.floors,
+                property.rooms,
+                property.price,
+                property.unitPrice,
+                property.image,
+                property.oldPrice ?? null,
+            ],
         );
-    }
-
-    private prepareItem(item: any): any {
-        for (const prop in item) {
-            if (Object.prototype.hasOwnProperty.call(item, prop)) {
-                if (item[prop] === '') {
-                    item[prop] = '---empty---';
-                } else if (typeof item[prop] === 'object' && item[prop] !== null) {
-                    this.prepareItem(item[prop]);
-                }
-            }
-        }
-        return item;
-    }
-
-    private cleanItem(item: any): any {
-        for (const prop in item) {
-            if (Object.prototype.hasOwnProperty.call(item, prop)) {
-                if (item[prop] === '---empty---') {
-                    item[prop] = '';
-                } else if (typeof item[prop] === 'object' && item[prop] !== null) {
-                    this.cleanItem(item[prop]);
-                }
-            }
-        }
-        return item;
     }
 
     async getItemById(id: string, propertyType = 0): Promise<Property | null> {
-        const tableName = process.env.PROPERTY_TABLE;
-        if (!tableName) {
-            throw new Error('PROPERTY_TABLE is not set');
-        }
-        const dbResponse = await this.client.send(
-            new GetCommand({
-                TableName: tableName,
-                Key: { id, propertyType },
-            }),
+        const res = await this.client.query(
+            `SELECT * FROM properties WHERE id = $1 AND property_type = $2 LIMIT 1`,
+            [id, propertyType],
         );
-        if (!dbResponse.Item) {
+        if (res.rows.length === 0) {
             return null;
         }
-        return this.cleanItem(dbResponse.Item) as Property;
+        return rowToProperty(res.rows[0] as Record<string, unknown>);
     }
 
     async getItemByURL(url: string): Promise<Property | null> {
-        const tableName = process.env.PROPERTY_TABLE;
-        if (!tableName) {
-            throw new Error('PROPERTY_TABLE is not set');
-        }
-        const dbResponse = await this.client.send(
-            new QueryCommand({
-                TableName: tableName,
-                IndexName: 'urlGSI',
-                KeyConditionExpression: 'propertyUrl = :url',
-                ExpressionAttributeValues: {
-                    ':url': url,
-                },
-            }),
+        const res = await this.client.query(
+            `SELECT * FROM properties WHERE property_url = $1 LIMIT 1`,
+            [url],
         );
-        if (!dbResponse.Items || dbResponse.Items.length === 0) {
+        if (res.rows.length === 0) {
             return null;
         }
-        return this.cleanItem(dbResponse.Items[0]) as Property;
+        return rowToProperty(res.rows[0] as Record<string, unknown>);
     }
 }
