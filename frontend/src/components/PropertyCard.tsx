@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { PropertyItem } from '../types'
 
 export type PropertyCardFavorite =
@@ -30,6 +31,14 @@ function previewDescription(text: string, maxVisible: number): string {
   return `${text.slice(0, maxVisible - 1)}…`
 }
 
+const RAW_LOCATION_LIST_MAX_WORDS = 10
+
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= maxWords) return text.trim()
+  return `${words.slice(0, maxWords).join(' ')}…`
+}
+
 interface Props {
   property: PropertyItem
   favorite?: PropertyCardFavorite
@@ -42,9 +51,14 @@ export function PropertyCard({ property, favorite }: Props) {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const descOverlayRef = useRef<HTMLDivElement>(null)
 
-  const locationLabel =
-    property.rawLocation?.trim() ||
-    (property.location ? `Lokacija #${property.location}` : 'Lokacija nepoznata')
+  const rawLocationFull = property.rawLocation?.trim()
+  const locationLabel = rawLocationFull
+    ? truncateWords(rawLocationFull, RAW_LOCATION_LIST_MAX_WORDS)
+    : property.location
+      ? `Lokacija #${property.location}`
+      : 'Lokacija nepoznata'
+  const locationTitle =
+    rawLocationFull && locationLabel !== rawLocationFull ? rawLocationFull : undefined
 
   const description = String(property.description ?? '')
     .replace(/\u00a0/g, ' ')
@@ -147,12 +161,7 @@ export function PropertyCard({ property, favorite }: Props) {
     >
       <div className="card__media">
         {renderFavoriteControl()}
-        <a
-          className="card__media-link"
-          href={property.propertyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <Link className="card__media-link" to={`/properties/${property.id}`}>
           {typeLabel || serviceLabel || originLabel ? (
             <span className="card__badges">
               {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
@@ -168,7 +177,7 @@ export function PropertyCard({ property, favorite }: Props) {
             loading="lazy"
             onError={() => setImgSrc(placeholder)}
           />
-        </a>
+        </Link>
       </div>
       <div className="card__body">
         <div className="card__price-row">
@@ -178,10 +187,20 @@ export function PropertyCard({ property, favorite }: Props) {
           )}
         </div>
         <h2 className="card__title">
-          <a href={property.propertyUrl} target="_blank" rel="noopener noreferrer">
+          <Link to={`/properties/${property.id}`}>
             {property.title || 'Bez naslova'}
-          </a>
+          </Link>
         </h2>
+        <p className="card__external-wrap">
+          <a
+            className="card__external"
+            href={property.propertyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Originalni oglas na izvornom sajtu ↗
+          </a>
+        </p>
         <p className="card__meta">
           <span>{formatRooms(property.rooms)} soba</span>
           <span className="card__dot">·</span>
@@ -189,7 +208,9 @@ export function PropertyCard({ property, favorite }: Props) {
           <span className="card__dot">·</span>
           <span>{formatUnitPrice(property.unitPrice)}</span>
         </p>
-        <p className="card__location">{locationLabel}</p>
+        <p className="card__location" title={locationTitle}>
+          {locationLabel}
+        </p>
         {description ? (
           <div className="card__desc">
             {needsReadMore && descriptionExpanded ? (

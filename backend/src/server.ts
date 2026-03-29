@@ -10,6 +10,7 @@ import {
 } from './favorites';
 import {
     getPropertiesResponse,
+    getPropertyByIdResponse,
     type GetPropertiesQueryInput,
 } from './functions/get-properties';
 
@@ -64,6 +65,20 @@ app.delete(['/favorites/:propertyId', '/favorites/:propertyId/'], (req, res, nex
 app.get(['/properties', '/properties/'], async (req, res) => {
     try {
         const result = await getPropertiesResponse(requestToGetPropertiesInput(req));
+        res.status(result.statusCode)
+            .set('Content-Type', 'application/json')
+            .send(result.body);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: err instanceof Error ? err.message : 'Internal error',
+        });
+    }
+});
+
+app.get(['/properties/:propertyId', '/properties/:propertyId/'], async (req, res) => {
+    try {
+        const result = await getPropertyByIdResponse(req.params.propertyId);
         res.status(result.statusCode)
             .set('Content-Type', 'application/json')
             .send(result.body);

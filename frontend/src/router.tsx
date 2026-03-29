@@ -4,6 +4,7 @@ import App from './App'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { PropertyDetailPage } from './pages/PropertyDetailPage'
 import { RegisterPage } from './pages/RegisterPage'
 
 export const router = createBrowserRouter([
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'properties/:propertyId', element: <PropertyDetailPage /> },
     ],
   },
 ])

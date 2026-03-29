@@ -376,3 +376,47 @@ export async function getPropertiesResponse(
         };
     }
 }
+
+/** Crawler uses `uuid` for `properties.id`; reject odd strings before querying. */
+const PROPERTY_ID_UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function getPropertyByIdResponse(
+    propertyId: string,
+): Promise<GetPropertiesHttpResult> {
+    const id = propertyId?.trim() ?? '';
+    if (!id || !PROPERTY_ID_UUID_RE.test(id)) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ message: 'Invalid property id' }),
+        };
+    }
+
+    try {
+        const result = await getPool().query(
+            'SELECT * FROM properties WHERE id = $1 LIMIT 1',
+            [id],
+        );
+        const row = result.rows[0];
+        if (!row) {
+            return {
+                statusCode: 404,
+                body: JSON.stringify({ message: 'Property not found' }),
+            };
+        }
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                item: propertyRowToItem(row as Record<string, unknown>),
+            }),
+        };
+    } catch (err) {
+        console.error(err);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                message: err instanceof Error ? err.message : 'Database error',
+            }),
+        };
+    }
+}

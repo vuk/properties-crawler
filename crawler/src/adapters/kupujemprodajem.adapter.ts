@@ -1,5 +1,23 @@
+import { load } from "cheerio";
 import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
 import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
+
+/** Next.js/CSS-module class prefix for the listing location line (e.g. …_location__hash). */
+const KP_AD_VIEW_LOCATION_CLASS_PREFIX = "AdViewInfoRealEstateLocation_location";
+
+function textFromAdViewRealEstateLocation(html: string): string {
+  if (!html) return "";
+  const $ = load(html);
+  for (const el of $("[class]").toArray()) {
+    const cls = $(el).attr("class");
+    if (!cls) continue;
+    const hit = cls.split(/\s+/).some((c) => c.startsWith(KP_AD_VIEW_LOCATION_CLASS_PREFIX));
+    if (!hit) continue;
+    const t = $(el).text().replace(/\s+/g, " ").trim();
+    if (t) return t;
+  }
+  return "";
+}
 
 /** Minimal shape from KP Next.js `__NEXT_DATA__` → `initialReduxState.ad.byId`. */
 type KpAdAttribute = {
@@ -169,6 +187,43 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
     return entry._kpProductDetailsDescSpans;
   }
 
+  /** Primary location line in SSR HTML; used for `raw_location` and LAU mapping before older heuristics. */
+  private adViewRealEstateLocationText(entry: any): string {
+    if (entry._kpAdViewRealEstateLocation !== undefined) return entry._kpAdViewRealEstateLocation;
+    const body = typeof entry.body === "string" ? entry.body : "";
+    entry._kpAdViewRealEstateLocation = textFromAdViewRealEstateLocation(body);
+    return entry._kpAdViewRealEstateLocation;
+  }
+
+  /** Fallback chain when the AdView location block is absent (previous `getRawLocationText` behavior). */
+  private kpRawLocationWithoutAdView(entry: any): string {
+    const descParts = this.productDetailsDescSpans(entry).map((s) => s.text);
+    const fromDesc = descParts.join(" - ").trim();
+    if (fromDesc) return fromDesc;
+
+    const ad = this.ad(entry);
+    const parts: string[] = [];
+    if (ad) {
+      for (const code of [
+        "grad",
+        "mesto",
+        "lokacija",
+        "opstina",
+        "city",
+        "realEstateCity",
+        "realEstatePlace",
+      ]) {
+        const v = attrFirst(ad, code);
+        if (v) parts.push(v);
+      }
+    }
+    const blob = parts.join(" ").trim();
+    if (blob) return blob;
+    return `${this.getTitle(entry)} ${this.getDescription(entry)} ${this.getUrl(entry)}`
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   getArea(entry: any): number {
     const ad = this.ad(entry);
     if (!ad) return 0;
@@ -284,31 +339,18 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
   }
 
   getRawLocationText(entry: any): string {
-    const descParts = this.productDetailsDescSpans(entry).map((s) => s.text);
-    const fromDesc = descParts.join(" - ").trim();
-    if (fromDesc) return fromDesc;
-
-    const ad = this.ad(entry);
-    const parts: string[] = [];
-    if (ad) {
-      for (const code of [
-        "grad",
-        "mesto",
-        "lokacija",
-        "opstina",
-        "city",
-        "realEstateCity",
-        "realEstatePlace",
-      ]) {
-        const v = attrFirst(ad, code);
-        if (v) parts.push(v);
-      }
-    }
-    const blob = parts.join(" ").trim();
-    return blob || super.getRawLocationText(entry);
+    const fromAdView = this.adViewRealEstateLocationText(entry);
+    if (fromAdView) return fromAdView;
+    return this.kpRawLocationWithoutAdView(entry);
   }
 
   getLocation(entry: any): SerbianMunicipality {
+    const adViewLoc = this.adViewRealEstateLocationText(entry);
+    if (adViewLoc) {
+      const fromAd = resolveSerbianMunicipality(adViewLoc);
+      if (fromAd !== SerbianMunicipality.UNKNOWN) return fromAd;
+    }
+
     const spans = this.productDetailsDescSpans(entry);
     const byCode = new Map(spans.map((s) => [s.code, s.text] as const));
     /** Prefer municipality (`lokacija`) over city (`grad`) for Belgrade city municipalities. */
@@ -343,6 +385,6 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
         }
       }
     }
-    return super.getLocation(entry);
+    return resolveSerbianMunicipality(this.kpRawLocationWithoutAdView(entry));
   }
 }
