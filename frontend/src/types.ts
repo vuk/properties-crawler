@@ -15,6 +15,7 @@ export interface PropertyItem {
   location: number
   rawLocation: string | null
   oldPrice?: number
+  lastCrawled?: string | null
 }
 
 export interface PropertiesResponse {
@@ -30,6 +31,21 @@ export type PropertyKind = 'all' | 'apartment' | 'house'
 
 /** Matches crawler `ServiceType`: sale=0, rent=1 */
 export type ServiceKind = 'all' | 'sale' | 'rent'
+
+/** Matches GET /properties/ `sortBy` (lastCrawled aliases with `date` on the server). */
+export type SortByField = 'lastCrawled' | 'price' | 'unitPrice'
+
+export type SortDirection = 'asc' | 'desc'
+
+export interface ListSortState {
+  sortBy: SortByField
+  sortDir: SortDirection
+}
+
+export const defaultListSort: ListSortState = {
+  sortBy: 'lastCrawled',
+  sortDir: 'desc',
+}
 
 export interface FilterState {
   propertyKind: PropertyKind

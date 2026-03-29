@@ -168,6 +168,44 @@ function parseLocationIds(
     return { ok: true, ids };
 }
 
+/** Whitelist only — never interpolate arbitrary client input as SQL identifiers. */
+function parseSortClause(
+    qp: Record<string, string | undefined>,
+):
+    | { ok: true; orderClause: string }
+    | { ok: false; message: string } {
+    const rawBy = qp.sortBy?.trim() ?? '';
+    const rawDir = (qp.sortDir?.trim().toLowerCase() || 'asc') as string;
+
+    if (!rawBy) {
+        return { ok: true, orderClause: 'id ASC' };
+    }
+
+    const byNorm = rawBy.toLowerCase();
+    const columnByAlias: Record<string, string> = {
+        id: 'id',
+        lastcrawled: 'last_crawled',
+        date: 'last_crawled',
+        price: 'price',
+        unitprice: 'unit_price',
+    };
+    const col = columnByAlias[byNorm];
+    if (!col) {
+        return {
+            ok: false,
+            message:
+                'sortBy must be id, lastCrawled, date, price, or unitPrice (omit for default id order)',
+        };
+    }
+
+    if (rawDir !== 'asc' && rawDir !== 'desc') {
+        return { ok: false, message: 'sortDir must be asc or desc' };
+    }
+
+    const dir = rawDir === 'desc' ? 'DESC' : 'ASC';
+    return { ok: true, orderClause: `${col} ${dir}, id ASC` };
+}
+
 export interface GetPropertiesQueryInput {
     queryStringParameters?: Record<string, string | undefined> | null;
     multiValueQueryStringParameters?: Record<string, string[]> | null;
@@ -240,6 +278,15 @@ export async function getPropertiesResponse(
         };
     }
     const locationIds = locationParse.ids;
+
+    const sortParse = parseSortClause(qp as Record<string, string | undefined>);
+    if (sortParse.ok === false) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ message: sortParse.message }),
+        };
+    }
+    const orderClause = sortParse.orderClause;
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -321,7 +368,7 @@ export async function getPropertiesResponse(
 
         const dataParams = [...params, pageSize, offset];
         const dataResult = await getPool().query(
-            `SELECT * FROM properties WHERE ${whereClause} ORDER BY id ASC LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+            `SELECT * FROM properties WHERE ${whereClause} ORDER BY ${orderClause} LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
             dataParams,
         );
 

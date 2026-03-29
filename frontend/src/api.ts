@@ -1,15 +1,17 @@
-import { appendListingFilters } from './listingSearchParams'
-import type { FilterState, PropertiesResponse } from './types'
+import { appendListingFilters, appendSortParams } from './listingSearchParams'
+import type { FilterState, ListSortState, PropertiesResponse } from './types'
 
 export function buildSearchParams(
   page: number,
   pageSize: number,
   filters: FilterState,
+  sort: ListSortState,
 ): URLSearchParams {
   const params = new URLSearchParams()
   params.set('page', String(page))
   params.set('pageSize', String(pageSize))
   appendListingFilters(params, filters)
+  appendSortParams(params, sort)
   return params
 }
 

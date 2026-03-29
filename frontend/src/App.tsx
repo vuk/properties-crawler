@@ -3,13 +3,16 @@ import { buildSearchParams, fetchProperties } from './api'
 import { FilterPanel } from './components/FilterPanel'
 import { Pagination } from './components/Pagination'
 import { PropertyCard } from './components/PropertyCard'
+import { SortBar } from './components/SortBar'
 import {
   buildListingUrlSearchParams,
   parseListingStateFromSearch,
 } from './listingSearchParams'
 import {
+  defaultListSort,
   emptyFilters,
   type FilterState,
+  type ListSortState,
   type PropertiesResponse,
   type PropertyItem,
 } from './types'
@@ -19,15 +22,20 @@ const PAGE_SIZE = 12
 function readInitialFromUrl(): {
   filters: FilterState
   page: number
+  sort: ListSortState
 } {
   if (typeof window === 'undefined') {
-    return { filters: emptyFilters, page: 1 }
+    return { filters: emptyFilters, page: 1, sort: defaultListSort }
   }
   return parseListingStateFromSearch(window.location.search)
 }
 
-function syncUrl(page: number, filters: FilterState): void {
-  const params = buildListingUrlSearchParams(page, filters)
+function syncUrl(
+  page: number,
+  filters: FilterState,
+  sort: ListSortState,
+): void {
+  const params = buildListingUrlSearchParams(page, filters, sort)
   const qs = params.toString()
   const path = window.location.pathname
   const next = qs ? `${path}?${qs}` : path
@@ -43,6 +51,7 @@ function useListings() {
     initial.filters,
   )
   const [draftFilters, setDraftFilters] = useState<FilterState>(initial.filters)
+  const [sort, setSortState] = useState<ListSortState>(initial.sort)
   const [page, setPage] = useState(initial.page)
   const [data, setData] = useState<PropertiesResponse | null>(null)
   const [items, setItems] = useState<PropertyItem[]>([])
@@ -53,7 +62,7 @@ function useListings() {
     setLoading(true)
     setError(null)
     try {
-      const params = buildSearchParams(page, PAGE_SIZE, appliedFilters)
+      const params = buildSearchParams(page, PAGE_SIZE, appliedFilters, sort)
       const res = await fetchProperties(params)
       setData(res)
       setItems(res.items)
@@ -64,23 +73,24 @@ function useListings() {
     } finally {
       setLoading(false)
     }
-  }, [page, appliedFilters])
+  }, [page, appliedFilters, sort])
 
   useEffect(() => {
     void load()
   }, [load])
 
   useEffect(() => {
-    syncUrl(page, appliedFilters)
-  }, [page, appliedFilters])
+    syncUrl(page, appliedFilters, sort)
+  }, [page, appliedFilters, sort])
 
   useEffect(() => {
     const onPopState = () => {
-      const { filters, page: p } = parseListingStateFromSearch(
+      const { filters, page: p, sort: s } = parseListingStateFromSearch(
         window.location.search,
       )
       setAppliedFilters(filters)
       setDraftFilters(filters)
+      setSortState(s)
       setPage(p)
     }
     window.addEventListener('popstate', onPopState)
@@ -98,11 +108,18 @@ function useListings() {
     setPage(1)
   }, [])
 
+  const setSortAndResetPage = useCallback((next: ListSortState) => {
+    setSortState(next)
+    setPage(1)
+  }, [])
+
   return {
     draftFilters,
     setDraftFilters,
     applyFilters,
     resetFilters,
+    sort,
+    setSort: setSortAndResetPage,
     page,
     setPage,
     data,
@@ -119,6 +136,8 @@ export default function App() {
     setDraftFilters,
     applyFilters,
     resetFilters,
+    sort,
+    setSort,
     setPage,
     data,
     items,
@@ -154,6 +173,8 @@ export default function App() {
               {error}
             </div>
           ) : null}
+
+          <SortBar sort={sort} onChange={setSort} />
 
           {loading ? (
             <div className="state state--loading">

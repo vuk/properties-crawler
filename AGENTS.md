@@ -48,7 +48,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 - **Backend container / host**: set `DATABASE_URL` (and optional `PORT`, default **3000**; `DATABASE_SSL=true` when required). No AWS Lambda in this stack.
 - **Docker**: repo root `docker compose up -d --build` runs DB + backend + crawler; `cd backend && npm run start:db` starts **only** Postgres; `npm run start:compose` starts all three from `backend/`.
 
-**Properties API** (`getPropertiesResponse` in `get-properties.ts`): uses `**process.env.DATABASE_URL**` and returns paginated `{ items, page, pageSize, total, totalPages, lastEvaluatedKey: null }` with query filters such as `serviceType=sale|rent|all`, `propertyType=apartment|house|all`, and optional `locationIds` (comma-separated Serbian municipality integer codes, matches `properties.location`). Each item includes `lastCrawled` (ISO 8601 string from `last_crawled`).
+**Properties API** (`getPropertiesResponse` in `get-properties.ts`): uses `**process.env.DATABASE_URL**` and returns paginated `{ items, page, pageSize, total, totalPages, lastEvaluatedKey: null }` with query filters such as `serviceType=sale|rent|all`, `propertyType=apartment|house|all`, and optional `locationIds` (comma-separated Serbian municipality integer codes, matches `properties.location`). Each item includes `lastCrawled` (ISO 8601 string from `last_crawled`). Optional **`sortBy`** (`id`, `lastCrawled`, `date`, `price`, `unitPrice`; omit for `id`) and **`sortDir`** (`asc` or `desc`; default `asc` when `sortBy` is set) control listing order (SQL uses a fixed column whitelist + `id` as tie-breaker). The frontend sends `sortBy` / `sortDir` for date, price, and unit-price sorts.
 
 ## Dependencies and versions (high level)
 

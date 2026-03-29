@@ -1,9 +1,32 @@
 import {
+  defaultListSort,
   emptyFilters,
   type FilterState,
+  type ListSortState,
   type PropertyKind,
   type ServiceKind,
+  type SortByField,
+  type SortDirection,
 } from './types'
+
+function sortsEqual(a: ListSortState, b: ListSortState): boolean {
+  return a.sortBy === b.sortBy && a.sortDir === b.sortDir
+}
+
+/** Maps UI/API sort field to `sortBy` query value (backend accepts these case-insensitively). */
+function sortByQueryValue(sortBy: SortByField): string {
+  if (sortBy === 'lastCrawled') return 'lastCrawled'
+  if (sortBy === 'unitPrice') return 'unitPrice'
+  return 'price'
+}
+
+export function appendSortParams(
+  params: URLSearchParams,
+  sort: ListSortState,
+): void {
+  params.set('sortBy', sortByQueryValue(sort.sortBy))
+  params.set('sortDir', sort.sortDir)
+}
 
 /** Appends listing filter query keys (same names as GET /properties/). */
 export function appendListingFilters(
@@ -42,10 +65,14 @@ export function appendListingFilters(
 export function buildListingUrlSearchParams(
   page: number,
   filters: FilterState,
+  sort: ListSortState,
 ): URLSearchParams {
   const params = new URLSearchParams()
   if (page > 1) params.set('page', String(page))
   appendListingFilters(params, filters)
+  if (!sortsEqual(sort, defaultListSort)) {
+    appendSortParams(params, sort)
+  }
   return params
 }
 
@@ -74,9 +101,37 @@ function parsePage(raw: string | null): number {
   return n
 }
 
+function parseSortFromSearch(sp: URLSearchParams): ListSortState {
+  const rawBy = sp.get('sortBy')?.trim().toLowerCase() ?? ''
+  const rawDirRaw = sp.get('sortDir')?.trim().toLowerCase()
+
+  if (!rawBy) {
+    return { ...defaultListSort }
+  }
+
+  let sortBy: SortByField = defaultListSort.sortBy
+  if (
+    rawBy === 'lastcrawled' ||
+    rawBy === 'date' ||
+    rawBy === 'last_crawled'
+  ) {
+    sortBy = 'lastCrawled'
+  } else if (rawBy === 'price') {
+    sortBy = 'price'
+  } else if (rawBy === 'unitprice' || rawBy === 'unit_price') {
+    sortBy = 'unitPrice'
+  }
+
+  const sortDir: SortDirection =
+    rawDirRaw === 'asc' || rawDirRaw === 'desc' ? rawDirRaw : 'asc'
+
+  return { sortBy, sortDir }
+}
+
 export function parseListingStateFromSearch(search: string): {
   filters: FilterState
   page: number
+  sort: ListSortState
 } {
   const q = search.startsWith('?') ? search.slice(1) : search
   const sp = new URLSearchParams(q)
@@ -98,5 +153,6 @@ export function parseListingStateFromSearch(search: string): {
       maxUnitPrice: getStr('maxUnitPrice'),
     },
     page: parsePage(sp.get('page')),
+    sort: parseSortFromSearch(sp),
   }
 }
