@@ -28,3 +28,11 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Shortlisted listings per user (frontend favorites / profile).
+CREATE TABLE IF NOT EXISTS property_favorites (
+    user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    property_id TEXT NOT NULL REFERENCES properties (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, property_id)
+);

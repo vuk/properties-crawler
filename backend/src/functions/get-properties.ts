@@ -1,6 +1,6 @@
 import { getPool } from '../pool';
 
-function rowToItem(row: Record<string, unknown>) {
+export function propertyRowToItem(row: Record<string, unknown>) {
     return {
         id: row.id,
         propertyUrl: row.property_url,
@@ -352,7 +352,9 @@ export async function getPropertiesResponse(
             dataParams,
         );
 
-        const items = dataResult.rows.map((r) => rowToItem(r as Record<string, unknown>));
+        const items = dataResult.rows.map((r) =>
+            propertyRowToItem(r as Record<string, unknown>),
+        );
         return {
             statusCode: 200,
             body: JSON.stringify({

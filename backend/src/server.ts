@@ -2,6 +2,13 @@ import express, { type Request } from 'express';
 
 import { ensureUsersTable, getMe, postLogin, postRegister } from './auth';
 import {
+    addFavoriteHandler,
+    ensurePropertyFavoritesTable,
+    getFavoriteIdsHandler,
+    listFavoritesHandler,
+    removeFavoriteHandler,
+} from './favorites';
+import {
     getPropertiesResponse,
     type GetPropertiesQueryInput,
 } from './functions/get-properties';
@@ -41,6 +48,19 @@ app.get(['/auth/me', '/auth/me/'], (req, res, next) => {
     void getMe(req, res).catch(next);
 });
 
+app.get(['/favorites/ids', '/favorites/ids/'], (req, res, next) => {
+    void getFavoriteIdsHandler(req, res).catch(next);
+});
+app.get(['/favorites', '/favorites/'], (req, res, next) => {
+    void listFavoritesHandler(req, res).catch(next);
+});
+app.post(['/favorites/:propertyId', '/favorites/:propertyId/'], (req, res, next) => {
+    void addFavoriteHandler(req, res).catch(next);
+});
+app.delete(['/favorites/:propertyId', '/favorites/:propertyId/'], (req, res, next) => {
+    void removeFavoriteHandler(req, res).catch(next);
+});
+
 app.get(['/properties', '/properties/'], async (req, res) => {
     try {
         const result = await getPropertiesResponse(requestToGetPropertiesInput(req));
@@ -75,6 +95,7 @@ app.use(
 
 async function start(): Promise<void> {
     await ensureUsersTable();
+    await ensurePropertyFavoritesTable();
     app.listen(port, '0.0.0.0', () => {
         console.log(`properties API listening on 0.0.0.0:${port}`);
     });

@@ -1,5 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PropertyItem } from '../types'
+
+export type PropertyCardFavorite =
+  | {
+      mode: 'toggle'
+      isFavorite: boolean
+      busy?: boolean
+      onToggle: () => void
+    }
+  | {
+      mode: 'remove'
+      busy?: boolean
+      onRemove: () => void
+    }
 import { formatArea, formatPrice, formatRooms, formatUnitPrice } from '../format'
 import { propertyOriginLabel } from '../propertyOrigin'
 
@@ -19,9 +32,10 @@ function previewDescription(text: string, maxVisible: number): string {
 
 interface Props {
   property: PropertyItem
+  favorite?: PropertyCardFavorite
 }
 
-export function PropertyCard({ property }: Props) {
+export function PropertyCard({ property, favorite }: Props) {
   const [imgSrc, setImgSrc] = useState(
     property.image?.trim() ? property.image : placeholder,
   )
@@ -83,34 +97,79 @@ export function PropertyCard({ property }: Props) {
 
   const originLabel = propertyOriginLabel(property.propertyUrl)
 
+  function renderFavoriteControl() {
+    if (!favorite) return null
+    if (favorite.mode === 'toggle') {
+      const label = favorite.isFavorite ? 'Ukloni iz sačuvanih' : 'Sačuvaj oglas'
+      return (
+        <button
+          type="button"
+          className={
+            favorite.isFavorite ? 'card__favorite card__favorite--on' : 'card__favorite'
+          }
+          disabled={favorite.busy}
+          aria-pressed={favorite.isFavorite}
+          aria-label={label}
+          title={label}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            favorite.onToggle()
+          }}
+        >
+          <span aria-hidden>{favorite.isFavorite ? '♥' : '♡'}</span>
+        </button>
+      )
+    }
+    return (
+      <button
+        type="button"
+        className="card__favorite card__favorite--remove"
+        disabled={favorite.busy}
+        aria-label="Ukloni iz sačuvanih"
+        title="Ukloni iz sačuvanih"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          favorite.onRemove()
+        }}
+      >
+        <span aria-hidden>×</span>
+      </button>
+    )
+  }
+
   return (
     <article
       className={
         descriptionExpanded && needsReadMore ? 'card card--desc-expanded' : 'card'
       }
     >
-      <a
-        className="card__media"
-        href={property.propertyUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {typeLabel || serviceLabel || originLabel ? (
-          <span className="card__badges">
-            {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
-            {serviceLabel ? <span className={serviceBadgeClass}>{serviceLabel}</span> : null}
-            {originLabel ? (
-              <span className="card__badge card__badge--source">{originLabel}</span>
-            ) : null}
-          </span>
-        ) : null}
-        <img
-          src={imgSrc}
-          alt=""
-          loading="lazy"
-          onError={() => setImgSrc(placeholder)}
-        />
-      </a>
+      <div className="card__media">
+        {renderFavoriteControl()}
+        <a
+          className="card__media-link"
+          href={property.propertyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {typeLabel || serviceLabel || originLabel ? (
+            <span className="card__badges">
+              {typeLabel ? <span className={typeBadgeClass}>{typeLabel}</span> : null}
+              {serviceLabel ? <span className={serviceBadgeClass}>{serviceLabel}</span> : null}
+              {originLabel ? (
+                <span className="card__badge card__badge--source">{originLabel}</span>
+              ) : null}
+            </span>
+          ) : null}
+          <img
+            src={imgSrc}
+            alt=""
+            loading="lazy"
+            onError={() => setImgSrc(placeholder)}
+          />
+        </a>
+      </div>
       <div className="card__body">
         <div className="card__price-row">
           <span className="card__price">{formatPrice(property.price)} €</span>

@@ -8,6 +8,8 @@ import {
   buildListingUrlSearchParams,
   parseListingStateFromSearch,
 } from '../listingSearchParams'
+import { useAuth } from '../AuthContext'
+import { useFavorites } from '../FavoritesContext'
 import {
   defaultListSort,
   emptyFilters,
@@ -131,6 +133,8 @@ function useListings() {
 }
 
 export function HomePage() {
+  const { user } = useAuth()
+  const { isFavorite, isBusy, toggleFavorite } = useFavorites()
   const {
     draftFilters,
     setDraftFilters,
@@ -176,7 +180,20 @@ export function HomePage() {
           <>
             <div className="grid">
               {items.map((p) => (
-                <PropertyCard key={p.id} property={p} />
+                <PropertyCard
+                  key={p.id}
+                  property={p}
+                  favorite={
+                    user
+                      ? {
+                          mode: 'toggle',
+                          isFavorite: isFavorite(p.id),
+                          busy: isBusy(p.id),
+                          onToggle: () => void toggleFavorite(p.id),
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </div>
             {data ? (
