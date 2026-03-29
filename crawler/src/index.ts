@@ -20,36 +20,19 @@ function crawlerRateLimitMs(): number {
     return 0;
 }
 
-/** node-crawler Bottleneck limiter name for 4zida.rs (see queueCrawlUrl). */
-const ZIDA_CRAWLER_LIMITER = "4zida.rs";
-/** Max request starts per minute to 4zida (429 mitigation). Bottleneck uses min gap between starts. */
-const ZIDA_REQUESTS_PER_MINUTE = 10;
-const ZIDA_RATE_LIMIT_MS = Math.ceil(60_000 / ZIDA_REQUESTS_PER_MINUTE);
+/** Max HTTP request *starts* per minute per hostname (429 mitigation). Bottleneck min gap between starts. */
+const HOST_REQUESTS_PER_MINUTE = 10;
+const HOST_RATE_LIMIT_MS = Math.ceil(60_000 / HOST_REQUESTS_PER_MINUTE);
 
-/** node-crawler Bottleneck limiter for kupujemprodajem.com (same cadence as 4zida). */
-const KP_CRAWLER_LIMITER = "kupujemprodajem.com";
-const KP_REQUESTS_PER_MINUTE = 10;
-const KP_RATE_LIMIT_MS = Math.ceil(60_000 / KP_REQUESTS_PER_MINUTE);
-
-function is4zidaHostUrl(uri: string): boolean {
+/** Bottleneck limiter id: URL hostname, or `default` if the URI cannot be parsed. */
+function limiterKeyFromUri(uri: string): string {
     const t = uri.trim();
-    return t.length > 0 && t.includes("4zida.rs");
-}
-
-function isKupujemprodajemHostUrl(uri: string): boolean {
-    const t = uri.trim();
-    return t.length > 0 && t.includes("kupujemprodajem.com");
-}
-
-/** Queue a URL, routing throttled hosts through dedicated rate-limited limiters. */
-function queueCrawlUrl(crawler: InstanceType<typeof Crawler>, uri: string): void {
-    const trimmed = uri.trim();
-    if (is4zidaHostUrl(uri)) {
-        crawler.queue({ uri: trimmed, limiter: ZIDA_CRAWLER_LIMITER });
-    } else if (isKupujemprodajemHostUrl(uri)) {
-        crawler.queue({ uri: trimmed, limiter: KP_CRAWLER_LIMITER });
-    } else {
-        crawler.queue(uri);
+    if (!t) return "default";
+    try {
+        const u = new URL(t);
+        return u.hostname ? u.hostname.toLowerCase() : "default";
+    } catch {
+        return "default";
     }
 }
 
@@ -76,7 +59,11 @@ function resolveAdapterSeedUrl(raw: string, baseUrl: string): string {
     }
 }
 
-async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: any): Promise<boolean> {
+async function validateLinks(
+    url: string,
+    adapters: AbstractAdapter[],
+    queueCrawlUrl: (uri: string) => void
+): Promise<boolean> {
     if (isNonCrawlableHref(url)) return false;
     for (let i = 0; i < adapters.length; i++) {
         if (adapters[i].validateLink(url)) {
@@ -85,7 +72,7 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
                 next = resolveAdapterSeedUrl(next, adapters[i].baseUrl);
             }
             console.log(p.green('[INFO] ') + 'Queue URL ' + next);
-            queueCrawlUrl(crawler, next);
+            queueCrawlUrl(next);
             return true;
         }
     }
@@ -95,24 +82,28 @@ async function validateLinks(url: string, adapters: AbstractAdapter[], crawler: 
     return false;
 }
 
-async function queueLinks($: any, crawler: any, adapters: AbstractAdapter[]): Promise<void> {
+async function queueLinks(
+    $: any,
+    adapters: AbstractAdapter[],
+    queueCrawlUrl: (uri: string) => void
+): Promise<void> {
     const seen = new Set<string>();
     $('a').each(async (index: number, element: any) => {
         let link = $(element).attr('href');
         if (link != null && !seen.has(link)) {
             seen.add(link);
-            await validateLinks(link, adapters, crawler);
+            await validateLinks(link, adapters, queueCrawlUrl);
         }
     });
 }
 
-function initiateCrawl(crawler: InstanceType<typeof Crawler>, adapters: AbstractAdapter[]): void {
+function initiateCrawl(adapters: AbstractAdapter[], queueCrawlUrl: (uri: string) => void): void {
     for (let i = 0; i < adapters.length; i++) {
         console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].baseUrl);
         console.log(p.green('[INFO] ') + 'Queue ' + adapters[i].seedUrl);
-        queueCrawlUrl(crawler, adapters[i].baseUrl);
+        queueCrawlUrl(adapters[i].baseUrl);
         for (const seed of adapters[i].seedUrl) {
-            queueCrawlUrl(crawler, seed);
+            queueCrawlUrl(seed);
         }
     }
 }
@@ -148,7 +139,7 @@ async function start() {
             if (error) {
                 console.log(p.red(String(error)));
             } else {
-                await queueLinks(res.$, crawler, adapters);
+                await queueLinks(res.$, adapters, queueCrawlUrl);
                 const adapter = getAdapter(res.request.uri.href);
                 const status = res.statusCode;
                 if (
@@ -179,14 +170,23 @@ async function start() {
         }
     });
 
-    crawler.setLimiterProperty(ZIDA_CRAWLER_LIMITER, "rateLimit", ZIDA_RATE_LIMIT_MS);
-    crawler.setLimiterProperty(KP_CRAWLER_LIMITER, "rateLimit", KP_RATE_LIMIT_MS);
+    const configuredHostLimiters = new Set<string>();
+    function queueCrawlUrl(uri: string): void {
+        const trimmed = uri.trim();
+        const key = limiterKeyFromUri(trimmed);
+        if (!configuredHostLimiters.has(key)) {
+            configuredHostLimiters.add(key);
+            crawler.setLimiterProperty(key, "rateLimit", HOST_RATE_LIMIT_MS);
+        }
+        crawler.queue({ uri: trimmed, limiter: key });
+    }
+
     console.log(
         p.cyan("[INFO] ") +
-            `Throttled hosts: 4zida.rs (${ZIDA_CRAWLER_LIMITER}) & kupujemprodajem.com (${KP_CRAWLER_LIMITER}) ~${ZIDA_REQUESTS_PER_MINUTE}/min (${ZIDA_RATE_LIMIT_MS}ms between starts each)`
+            `Per-host rate limit: ~${HOST_REQUESTS_PER_MINUTE}/min per hostname (${HOST_RATE_LIMIT_MS}ms min between request starts; Bottleneck limiter key = host)`
     );
 
-    initiateCrawl(crawler, adapters);
+    initiateCrawl(adapters, queueCrawlUrl);
 }
 
 start().then(() => {

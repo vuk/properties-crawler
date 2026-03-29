@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS properties (
     image TEXT NOT NULL DEFAULT '',
     old_price DOUBLE PRECISION NULL,
     location SMALLINT NOT NULL DEFAULT 0,
-    raw_location TEXT NULL
+    raw_location TEXT NULL,
+    last_crawled TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )`;
 
 const CREATE_INDEX_SQL = `CREATE INDEX IF NOT EXISTS properties_property_type_idx ON properties (property_type)`;
@@ -29,6 +30,9 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS location SMALLINT NOT NULL DEFAU
 
 const ADD_RAW_LOCATION_COLUMN_SQL = `
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS raw_location TEXT NULL`;
+
+const ADD_LAST_CRAWLED_COLUMN_SQL = `
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS last_crawled TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
 
 /** Migrate legacy INTEGER `rooms` to float (e.g. Halo oglasi "3.5"). */
 const ALTER_ROOMS_TO_FLOAT_SQL = `
@@ -115,6 +119,7 @@ export class Database {
         await this.pool.query(CREATE_INDEX_SQL);
         await this.pool.query(ADD_LOCATION_COLUMN_SQL);
         await this.pool.query(ADD_RAW_LOCATION_COLUMN_SQL);
+        await this.pool.query(ADD_LAST_CRAWLED_COLUMN_SQL);
         await this.pool.query(ALTER_ROOMS_TO_FLOAT_SQL);
     }
 
@@ -149,7 +154,7 @@ export class Database {
                     title = $2, property_type = $3, service_type = $4, description = $5,
                     area = $6, floor = $7, floors = $8, rooms = $9, price = $10,
                     unit_price = $11, image = $12, old_price = $13, location = $14,
-                    raw_location = $15
+                    raw_location = $15, last_crawled = CURRENT_TIMESTAMP
                 WHERE property_url = $1`,
                 [property.propertyUrl, ...row],
             );
@@ -159,8 +164,8 @@ export class Database {
             `INSERT INTO properties (
                 id, property_url, title, property_type, service_type, description,
                 area, floor, floors, rooms, price, unit_price, image, old_price, location,
-                raw_location
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                raw_location, last_crawled
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)`,
             [property.id, property.propertyUrl, ...row],
         );
     }

@@ -42,6 +42,12 @@ function rowToItem(row: Record<string, unknown>) {
                 ? String(row.raw_location)
                 : null,
         ...(row.old_price != null ? { oldPrice: row.old_price } : {}),
+        lastCrawled:
+            row.last_crawled instanceof Date
+                ? row.last_crawled.toISOString()
+                : row.last_crawled != null
+                  ? String(row.last_crawled)
+                  : null,
     };
 }
 
