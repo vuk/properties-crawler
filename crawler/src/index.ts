@@ -26,15 +26,28 @@ const ZIDA_CRAWLER_LIMITER = "4zida.rs";
 const ZIDA_REQUESTS_PER_MINUTE = 10;
 const ZIDA_RATE_LIMIT_MS = Math.ceil(60_000 / ZIDA_REQUESTS_PER_MINUTE);
 
+/** node-crawler Bottleneck limiter for kupujemprodajem.com (same cadence as 4zida). */
+const KP_CRAWLER_LIMITER = "kupujemprodajem.com";
+const KP_REQUESTS_PER_MINUTE = 10;
+const KP_RATE_LIMIT_MS = Math.ceil(60_000 / KP_REQUESTS_PER_MINUTE);
+
 function is4zidaHostUrl(uri: string): boolean {
     const t = uri.trim();
     return t.length > 0 && t.includes("4zida.rs");
 }
 
-/** Queue a URL, routing 4zida through a dedicated rate-limited limiter. */
+function isKupujemprodajemHostUrl(uri: string): boolean {
+    const t = uri.trim();
+    return t.length > 0 && t.includes("kupujemprodajem.com");
+}
+
+/** Queue a URL, routing throttled hosts through dedicated rate-limited limiters. */
 function queueCrawlUrl(crawler: InstanceType<typeof Crawler>, uri: string): void {
+    const trimmed = uri.trim();
     if (is4zidaHostUrl(uri)) {
-        crawler.queue({ uri: uri.trim(), limiter: ZIDA_CRAWLER_LIMITER });
+        crawler.queue({ uri: trimmed, limiter: ZIDA_CRAWLER_LIMITER });
+    } else if (isKupujemprodajemHostUrl(uri)) {
+        crawler.queue({ uri: trimmed, limiter: KP_CRAWLER_LIMITER });
     } else {
         crawler.queue(uri);
     }
@@ -167,9 +180,10 @@ async function start() {
     });
 
     crawler.setLimiterProperty(ZIDA_CRAWLER_LIMITER, "rateLimit", ZIDA_RATE_LIMIT_MS);
+    crawler.setLimiterProperty(KP_CRAWLER_LIMITER, "rateLimit", KP_RATE_LIMIT_MS);
     console.log(
         p.cyan("[INFO] ") +
-            `4zida.rs: dedicated limiter ${ZIDA_CRAWLER_LIMITER}, ~${ZIDA_REQUESTS_PER_MINUTE}/min (${ZIDA_RATE_LIMIT_MS}ms between starts)`
+            `Throttled hosts: 4zida.rs (${ZIDA_CRAWLER_LIMITER}) & kupujemprodajem.com (${KP_CRAWLER_LIMITER}) ~${ZIDA_REQUESTS_PER_MINUTE}/min (${ZIDA_RATE_LIMIT_MS}ms between starts each)`
     );
 
     initiateCrawl(crawler, adapters);
