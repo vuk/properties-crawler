@@ -134,6 +134,10 @@ async function start() {
         headers: {
             "User-Agent":
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            // indomio.rs (and similar CDNs) respond with HTTP 405 unless typical browser Accept headers are present.
+            Accept:
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,sr-RS;q=0.8,sr;q=0.7",
         },
         callback: async (error: Error, res: any, done: Function) => {
             if (error) {

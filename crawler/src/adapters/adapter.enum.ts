@@ -4,6 +4,7 @@ import { NekretnineAdapter } from "./nekretnine.adapter";
 import { HalooglasiAdapter } from "./halooglasi.adapter";
 import { KupujemprodajemAdapter } from "./kupujemprodajem.adapter";
 import { NovostioglasiAdapter } from "./novostioglasi.adapter";
+import { IndomioAdapter } from "./indomio.adapter";
 // import { RealiticaAdapter } from "./realitica.adapter";
 
 export default [
@@ -13,5 +14,6 @@ export default [
     HalooglasiAdapter,
     KupujemprodajemAdapter,
     NovostioglasiAdapter,
+    IndomioAdapter,
     // RealiticaAdapter,
 ];

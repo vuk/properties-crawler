@@ -21,7 +21,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 | `backend/`                                 | Express app: entry `src/server.ts`, shared `src/pool.ts`, **esbuild** bundle to `dist/server.js` (`esbuild.config.mjs`). Properties in `src/functions/get-properties.ts` (`getPropertiesResponse`, `getPropertyByIdResponse`); auth in `src/auth.ts`; favorites in `src/favorites.ts`. |
 
 
-**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi, Realitica).
+**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), Indomio (`https://www.indomio.rs/`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi, Indomio; Realitica is present in tree but commented out in the enum).
 
 ## Crawler architecture (mental model)
 
