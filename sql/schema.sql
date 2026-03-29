@@ -20,3 +20,11 @@ CREATE TABLE IF NOT EXISTS properties (
 );
 
 CREATE INDEX IF NOT EXISTS properties_property_type_idx ON properties (property_type);
+
+-- App users (registration / login for the frontend).
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
