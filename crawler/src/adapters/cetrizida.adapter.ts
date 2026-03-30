@@ -21,6 +21,18 @@ function pathSegments(url: string, baseUrl: string): string[] {
     }
 }
 
+function isAbsoluteUrl(url: string): boolean {
+    return /^https?:\/\//i.test(url);
+}
+
+function is4zidaAbsoluteUrl(url: string): boolean {
+    try {
+        return new URL(url).hostname.toLowerCase().includes("4zida.rs");
+    } catch {
+        return false;
+    }
+}
+
 function metaContent($: any, name: string): string {
     return ($( `meta[name="${name}"]` ).attr("content") || "").trim();
 }
@@ -185,7 +197,11 @@ export class CetrizidaAdapter extends AbstractAdapter {
     }
 
     validateListing(url: string): boolean {
-        if (!url || url.indexOf("4zida.rs") === -1) {
+        if (!url) {
+            return false;
+        }
+        // Accept relative links discovered on 4zida pages (e.g. /prodaja-stanova/...).
+        if (isAbsoluteUrl(url) && !is4zidaAbsoluteUrl(url)) {
             return false;
         }
         const segs = pathSegments(url, this.baseUrl);

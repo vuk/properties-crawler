@@ -52,7 +52,8 @@ export class KvadratAdapter extends AbstractAdapter {
     }
 
     getDescription(entry: any): string {
-        return entry.$("#description").text().trim();
+        const text = entry.$("#description").text().trim();
+        return text.replace(/^Opis\s*\r?\n\s*/u, "").trim();
     }
 
     getFloor(entry: any): number {

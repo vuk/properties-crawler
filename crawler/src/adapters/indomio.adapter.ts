@@ -4,11 +4,84 @@ import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-munic
 /**
  * Indomio.rs (anti-bot / JS challenge on many datacenter IPs; parsers target real listing HTML).
  *
- * **Discovery** (`validateLink`): any path on this host is followed (except static assets and bare `/`, `/en`, `/sr`
- * roots that would re-queue forever from global nav).
- * **Listings** (`validateListing`): only numeric ad detail URLs are parsed and stored as `Property` rows.
+ * **Discovery** (`validateLink`): only Serbia-market listing/search hubs and property-detail URLs are queued — not the global
+ * footer/nav (magazine, classifieds, profile, etc.), which would otherwise loop forever.
+ * **Listings** (`validateListing`): ad detail pages include:
+ * - **Root id** (no `/nekretnine` or `/rs` prefix): `https://www.indomio.rs/19318192?position=1` → pathname `/19318192` (query ignored).
+ * - `id-{digits}` on `/rs/nekretnine/...` search URLs; 24-char hex ObjectId; `stambeni-objekti/stanovi/...` slug+token paths.
+ * **Scope**: Serbia market only — not Montenegro locale (`/me/...`) or Montenegro `grad-*` slugs in the path.
  */
 const ID_DIGITS_MIN = 5;
+/** `id-539326`-style last segment on locale search URLs (`/rs/nekretnine/.../grad-novi-sad/id-539326`). */
+const ID_PREFIX_SEGMENT = /^id-\d{5,}$/i;
+/** Multi-segment detail URLs use long numeric listing ids (e.g. 5425646924686); avoid matching small path numbers. */
+const ID_DIGITS_MULTI_MIN = 10;
+
+/** Paths that are search / category listing grids (prefix match on pathname). */
+const LISTING_HUB_PREFIXES: RegExp[] = [
+    /^\/na-prodaju(\/|$)/i,
+    /^\/za-izdavanje(\/|$)/i,
+    /^\/nekretnine(\/|$)/i,
+    /^\/stambeni-objekti(\/|$)/i,
+    /^\/prodaja-stanova(\/|$)/i,
+    /^\/izdavanje-stanova(\/|$)/i,
+    /^\/prodaja-kuca(\/|$)/i,
+    /^\/izdavanje-kuca(\/|$)/i,
+    /^\/izdavanje-placeva(\/|$)/i,
+    /^\/prodaja-placeva(\/|$)/i,
+    /^\/izdavanje-poslovnih-prostora(\/|$)/i,
+    /^\/prodaja-poslovnih-prostora(\/|$)/i,
+    /^\/zemljista(\/|$)/i,
+    /^\/poslovni-objekti(\/|$)/i,
+    /^\/apartmani(\/|$)/i,
+    /^\/novogradnja(\/|$)/i,
+    /^\/hitna-ponuda(\/|$)/i,
+    /** Serbia (and sr/en UI); omit `me` — Montenegro market locale. */
+    /^\/(?:rs|sr|en)\/nekretnine(\/|$)/i,
+];
+
+/** Montenegro municipality slugs in `grad-*` URL segments (can appear under `/rs/nekretnine/...`). */
+const MONTENEGRO_GRAD_SLUGS = new Set([
+    "grad-bar",
+    "grad-berane",
+    "grad-bijelo-polje",
+    "grad-budva",
+    "grad-cetinje",
+    "grad-danilovgrad",
+    "grad-herceg-novi",
+    "grad-kolasin",
+    "grad-kotor",
+    "grad-niksic",
+    "grad-pluzine",
+    "grad-podgorica",
+    "grad-tivat",
+    "grad-ulcinj",
+    "grad-zabljak",
+]);
+
+/** Indomio paths we crawl: Serbia market only (not `/me/` Montenegro locale or Montenegro cities). */
+function isIndomioSerbiaMarketPath(pathname: string): boolean {
+    const p = normalizedPathname(pathname);
+    if (/^\/me(\/|$)/i.test(p)) {
+        return false;
+    }
+    for (const seg of p.split("/").filter(Boolean)) {
+        if (MONTENEGRO_GRAD_SLUGS.has(seg.toLowerCase())) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function normalizedPathname(pathname: string): string {
+    if (!pathname) return "/";
+    return pathname.startsWith("/") ? pathname : `/${pathname}`;
+}
+
+function isIndomioListingHubPath(pathname: string): boolean {
+    const p = normalizedPathname(pathname);
+    return LISTING_HUB_PREFIXES.some((re) => re.test(p));
+}
 
 function pathSegments(url: string, baseUrl: string): string[] {
     try {
@@ -307,30 +380,66 @@ export class IndomioAdapter extends AbstractAdapter {
     validateListing(url: string): boolean {
         const pathname = indomioResolvedPathname(url, this.baseUrl);
         if (!pathname) return false;
+        if (!isIndomioSerbiaMarketPath(pathname)) return false;
         const segs = pathname.split("/").filter(Boolean);
-        if (segs.length === 1 && new RegExp(`^\\d{${ID_DIGITS_MIN},}$`).test(segs[0])) {
-            return true;
+        if (segs.length === 0) return false;
+        const lastLower = segs[segs.length - 1].toLowerCase();
+        if (lastLower === "stampaj" || lastLower === "galerija" || lastLower === "print") {
+            return false;
         }
+        const last = segs[segs.length - 1];
+
+        // Canonical single listing: /{listingId} (e.g. /19318192) — no /nekretnine or /rs prefix; query string does not affect pathname.
+        if (segs.length === 1) {
+            if (new RegExp(`^\\d{${ID_DIGITS_MIN},}$`).test(segs[0])) return true;
+            if (/^[a-f0-9]{24}$/i.test(segs[0])) return true;
+            return false;
+        }
+        // Optional locale wrapper only: /en/123, /sr/123, /rs/123 — not /me/ (filtered by isIndomioSerbiaMarketPath for /me/*).
         if (
             segs.length === 2 &&
-            /^(en|sr)$/i.test(segs[0]) &&
-            new RegExp(`^\\d{${ID_DIGITS_MIN},}$`).test(segs[1])
+            /^(en|sr|rs)$/i.test(segs[0])
+        ) {
+            if (new RegExp(`^\\d{${ID_DIGITS_MIN},}$`).test(segs[1])) return true;
+            if (/^[a-f0-9]{24}$/i.test(segs[1])) return true;
+            return false;
+        }
+
+        const hasRealEstateContext =
+            isIndomioListingHubPath(pathname) ||
+            /\/nekretnine(\/|$)/i.test(pathname) ||
+            (segs.length >= 2 &&
+                segs[0].toLowerCase() === "stambeni-objekti" &&
+                segs[1].toLowerCase() === "stanovi");
+        if (hasRealEstateContext) {
+            if (new RegExp(`^\\d{${ID_DIGITS_MULTI_MIN},}$`).test(last)) return true;
+            if (ID_PREFIX_SEGMENT.test(last)) return true;
+            if (/^[a-f0-9]{24}$/i.test(last)) return true;
+        }
+
+        if (
+            segs.length >= 4 &&
+            segs[0].toLowerCase() === "stambeni-objekti" &&
+            segs[1].toLowerCase() === "stanovi" &&
+            /^[A-Za-z0-9_-]{8,}$/.test(last)
         ) {
             return true;
         }
+
         return false;
     }
 
     validateLink(url: string): boolean {
         const pathname = indomioResolvedPathname(url, this.baseUrl);
         if (!pathname) return false;
+        if (!isIndomioSerbiaMarketPath(pathname)) return false;
         if (/\.(pdf|jpe?g|png|gif|webp|svg|ico|css|js|mjs|map|woff2?|ttf|eot|zip)$/i.test(pathname)) {
             return false;
         }
         const segs = pathname.split("/").filter(Boolean);
-        // Nav repeats these on every page; baseUrl / seeds already enter the site.
         if (segs.length === 0) return false;
-        if (segs.length === 1 && /^(en|sr)$/i.test(segs[0])) return false;
-        return true;
+        if (segs.length === 1 && /^(en|sr|rs|me)$/i.test(segs[0])) return false;
+        if (this.validateListing(url)) return true;
+        return isIndomioListingHubPath(pathname);
     }
 }
