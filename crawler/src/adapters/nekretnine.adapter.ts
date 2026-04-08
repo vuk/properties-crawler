@@ -185,7 +185,7 @@ export class NekretnineAdapter extends AbstractAdapter {
     }
   }
 
-  validateListing(url: string): boolean {
+  validateListing(url: string, _res?: any): boolean {
     try {
       const u = new URL(url, this.baseUrl);
       const p = u.pathname.replace(/\/+$/, "") + "/";

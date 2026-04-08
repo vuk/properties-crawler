@@ -139,6 +139,18 @@ export class HalooglasiAdapter extends AbstractAdapter {
   seedUrl: string[] = [
     "https://www.halooglasi.com/nekretnine/prodaja-stanova/beograd",
     "https://www.halooglasi.com/nekretnine/izdavanje-stanova/beograd",
+    "https://www.halooglasi.com/nekretnine/prodaja-stanova/novi-sad",
+    "https://www.halooglasi.com/nekretnine/izdavanje-stanova/novi-sad",
+    "https://www.halooglasi.com/nekretnine/prodaja-stanova/nis",
+    "https://www.halooglasi.com/nekretnine/izdavanje-stanova/nis",
+    "https://www.halooglasi.com/nekretnine/prodaja-stanova/kragujevac",
+    "https://www.halooglasi.com/nekretnine/izdavanje-stanova/kragujevac",
+    "https://www.halooglasi.com/nekretnine/prodaja-stanova/subotica",
+    "https://www.halooglasi.com/nekretnine/izdavanje-stanova/subotica",
+    "https://www.halooglasi.com/nekretnine/prodaja-kuca/beograd",
+    "https://www.halooglasi.com/nekretnine/izdavanje-kuca/beograd",
+    "https://www.halooglasi.com/nekretnine/prodaja-kuca/novi-sad",
+    "https://www.halooglasi.com/nekretnine/izdavanje-kuca/novi-sad",
   ];
 
   private classified(entry: any): HaloClassified | null {
@@ -243,7 +255,7 @@ export class HalooglasiAdapter extends AbstractAdapter {
    * Only treat canonical ad detail URLs as listings: path ends with a long numeric id.
    * Example: /nekretnine/prodaja-stanova/slug/5425646956298
    */
-  validateListing(url: string): boolean {
+  validateListing(url: string, _res?: any): boolean {
     try {
       const u = new URL(url, this.baseUrl);
       if (!u.pathname.startsWith("/nekretnine/")) return false;

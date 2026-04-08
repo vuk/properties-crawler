@@ -128,7 +128,7 @@ export class RealiticaAdapter extends AbstractAdapter {
         return detailHtmlBlock(entry);
     }
 
-    validateListing(url: string): boolean {
+    validateListing(url: string, _res?: any): boolean {
         if (!url || !/realitica\.com/i.test(url)) return false;
         const segs = pathSegments(url, this.baseUrl);
         if (segs.length !== 3) return false;

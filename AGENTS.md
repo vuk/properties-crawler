@@ -21,20 +21,20 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 | `backend/`                                 | Express app: entry `src/server.ts`, shared `src/pool.ts`, **esbuild** bundle to `dist/server.js` (`esbuild.config.mjs`). Properties in `src/functions/get-properties.ts` (`getPropertiesResponse`, `getPropertyByIdResponse`); auth in `src/auth.ts`; favorites in `src/favorites.ts`. |
 
 
-**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), Indomio (`https://www.indomio.rs/`), Estitor (`https://estitor.com/` — crawler limits to Serbia locale paths `/rs`, `/rs-en`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi, Indomio, Estitor; Realitica is present in tree but commented out in the enum).
+**Readme** lists target sites (nekretnine.rs, 4zida.rs, halooglasi, kupujemprodajem). **Actual adapters** in tree include Halooglasi, Nekretnine, Kvadrat, Cetrizida (4zida), Kupujemprodajem, Novostioglasi (`https://oglasi.novosti.rs/nekretnine/`), Oglasi.rs (`https://www.oglasi.rs/nekretnine` — single-ad URLs are `/oglas/{dd-id}/{slug}/` site-wide; the Oglasi adapter only persists ads whose **breadcrumb** includes `/nekretnine`, not other categories), Indomio (`https://www.indomio.rs/`), Estitor (`https://estitor.com/` — crawler limits to Serbia locale paths `/rs`, `/rs-en`), and Realitica — naming does not always match Readme URLs. **Only adapters exported from `adapter.enum.ts` run** (currently: Cetrizida, Kvadrat, Nekretnine, Halooglasi, Kupujemprodajem, Novostioglasi, Estitor, Oglasi; Indomio and Realitica are present in tree but commented out in the enum).
 
 ## Crawler architecture (mental model)
 
 1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request). Every queued URL is routed through a **per-hostname** Bottleneck limiter at **~15 request starts/minute** per host (4s minimum between *starting* fetches on that host) to reduce **429** responses; unparseable URIs use limiter key `default`.
 2. **Seeding**: `initiateCrawl` queues each adapter’s `baseUrl` and `seedUrl` entries via `queueCrawlUrl` (hostname-derived limiter + `setLimiterProperty` on first use for that key).
 3. **Every response**: `queueLinks` follows `<a href>` and `validateLink` on each adapter to decide what to queue (with URL normalization against `baseUrl`).
-4. **Listing pages**: If `getAdapter(url)` matches and `validateListing(url)` is true, `adapter.parseData(res)` builds a `Property`, Joi-validates, then `store` → `putProperty`.
+4. **Listing pages**: If `getAdapter(url)` matches and `validateListing(url, res)` is true, `adapter.parseData(res)` builds a `Property`, Joi-validates, then `store` → `putProperty`. Adapters may use optional Cheerio **`res`** (second argument) for DOM-based detail detection (e.g. Oglasi.rs nekretnine vs other `/oglas/` categories).
 
 `**AbstractAdapter`** (`abstract-adapter.ts`) defines:
 
 - `baseUrl`, `seedUrl[]`
 - Parsers: `getRooms`, `getArea`, `getFloor`, `getFloors`, `getPrice`, `getImage`, `getTitle`, `getDescription`, `getServiceType`, `getType` (defaults: `getUrl` from request URI, `getUnitPrice` = price/area)
-- `validateLink` / `validateListing` — **different concerns**: discovery vs detail page
+- `validateLink` / `validateListing` — **different concerns**: discovery vs detail page (`validateListing(url, res?)` — optional **`res`** for HTML checks)
 - `shouldReturn` — env-driven filters (`MIN_*`, `MAX_*`, `NO_ATTIC`, `NO_BASEMENT`); **note**: `isType` returns `this` or `null` but is typed as `AbstractAdapter` in the base class.
 
 `**Property`** uses numeric enums `PropertyType` and `ServiceType` (TypeScript numeric enums → stored as `SMALLINT` in Postgres), plus `location` as `SerbianMunicipality` (integer LAU code; `crawler/src/adapters/serbian-municipality.ts`). `rawLocation` holds scraped free text from `getRawLocationText` (`raw_location` in Postgres) whenever non-empty, including when `location` resolved successfully.

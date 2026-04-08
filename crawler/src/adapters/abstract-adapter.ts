@@ -101,7 +101,7 @@ export abstract class AbstractAdapter {
 
     abstract validateLink(url: string): boolean;
 
-    abstract validateListing(url: string): boolean;
+    abstract validateListing(url: string, res?: any): boolean;
 
     /**
      * Best-effort location strings from the page (or URL); persisted as rawLocation when non-empty.

@@ -451,7 +451,7 @@ export class EstitorAdapter extends AbstractAdapter {
         return super.getLocation(entry);
     }
 
-    validateListing(url: string): boolean {
+    validateListing(url: string, _res?: any): boolean {
         const pathname = estitorResolvedPathname(url, this.baseUrl);
         if (!pathname || !isSerbiaEstitorPath(pathname)) return false;
         const segs = pathname.split("/").filter(Boolean);

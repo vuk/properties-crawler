@@ -148,7 +148,7 @@ async function start() {
                 const status = res.statusCode;
                 if (
                     adapter &&
-                    adapter.validateListing(res.request.uri.href) &&
+                    adapter.validateListing(res.request.uri.href, res) &&
                     (status === undefined || status < 400)
                 ) {
                     try {
@@ -163,7 +163,7 @@ async function start() {
                         console.log(
                             p.red('[LISTING ERROR] ') + `HTTP ${status} ${href}`
                         );
-                    } else if (!adapter.validateListing(href)) {
+                    } else if (!adapter.validateListing(href, res)) {
                         console.log(
                             p.red('[LISTING ERROR] ') + `validateListing rejected ${href}`
                         );

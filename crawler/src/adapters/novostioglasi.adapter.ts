@@ -238,7 +238,7 @@ export class NovostioglasiAdapter extends AbstractAdapter {
    * Single property pages use exactly four segments: /nekretnine/a/b/slug/
    * (excludes /nekretnine/, /nekretnine/stanovi/, pagination, etc.)
    */
-  validateListing(url: string): boolean {
+  validateListing(url: string, _res?: any): boolean {
     try {
       const u = new URL(url, this.baseUrl);
       if (!hostMatchesNovosti(u.hostname)) return false;

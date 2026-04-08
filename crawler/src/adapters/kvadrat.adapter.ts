@@ -118,7 +118,7 @@ export class KvadratAdapter extends AbstractAdapter {
         );
     }
 
-    validateListing(url: string): boolean {
+    validateListing(url: string, _res?: any): boolean {
         if (!this.isKvadratUrl(url)) return false;
         return LISTING_DETAIL_PATH.test(url);
     }

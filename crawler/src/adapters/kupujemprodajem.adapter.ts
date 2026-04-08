@@ -304,7 +304,7 @@ export class KupujemprodajemAdapter extends AbstractAdapter {
   }
 
   /** Canonical classified: `…/nekretnine-{prodaja|izdavanje}/…/oglas/{id}`. */
-  validateListing(url: string): boolean {
+  validateListing(url: string, _res?: any): boolean {
     try {
       const u = new URL(url, this.baseUrl);
       if (u.hostname.replace(/^www\./i, "") !== "kupujemprodajem.com") return false;

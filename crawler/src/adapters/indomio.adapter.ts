@@ -377,7 +377,7 @@ export class IndomioAdapter extends AbstractAdapter {
         return super.getLocation(entry);
     }
 
-    validateListing(url: string): boolean {
+    validateListing(url: string, _res?: any): boolean {
         const pathname = indomioResolvedPathname(url, this.baseUrl);
         if (!pathname) return false;
         if (!isIndomioSerbiaMarketPath(pathname)) return false;

@@ -196,7 +196,7 @@ export class CetrizidaAdapter extends AbstractAdapter {
         return false;
     }
 
-    validateListing(url: string): boolean {
+    validateListing(url: string, _res?: any): boolean {
         if (!url) {
             return false;
         }
