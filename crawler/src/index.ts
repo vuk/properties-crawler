@@ -21,7 +21,7 @@ function crawlerRateLimitMs(): number {
 }
 
 /** Max HTTP request *starts* per minute per hostname (429 mitigation). Bottleneck min gap between starts. */
-const HOST_REQUESTS_PER_MINUTE = 10;
+const HOST_REQUESTS_PER_MINUTE = 15;
 const HOST_RATE_LIMIT_MS = Math.ceil(60_000 / HOST_REQUESTS_PER_MINUTE);
 
 /** Bottleneck limiter id: URL hostname, or `default` if the URI cannot be parsed. */

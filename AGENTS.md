@@ -25,7 +25,7 @@ This repository mixes **older patterns** (site-specific Cheerio scraping, `crawl
 
 ## Crawler architecture (mental model)
 
-1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request). Every queued URL is routed through a **per-hostname** Bottleneck limiter at **~10 request starts/minute** per host (6s minimum between *starting* fetches on that host) to reduce **429** responses; unparseable URIs use limiter key `default`.
+1. **Startup**: `index.ts` instantiates every adapter from `adapter.enum.ts`, connects `Database`, creates a `Crawler` with configurable concurrency (`CRAWLER_MAX_CONNECTIONS`, default **10**; optional `CRAWLER_RATE_LIMIT_MS` — note: in node-crawler, `rateLimit > 0` forces a single in-flight request). Every queued URL is routed through a **per-hostname** Bottleneck limiter at **~15 request starts/minute** per host (4s minimum between *starting* fetches on that host) to reduce **429** responses; unparseable URIs use limiter key `default`.
 2. **Seeding**: `initiateCrawl` queues each adapter’s `baseUrl` and `seedUrl` entries via `queueCrawlUrl` (hostname-derived limiter + `setLimiterProperty` on first use for that key).
 3. **Every response**: `queueLinks` follows `<a href>` and `validateLink` on each adapter to decide what to queue (with URL normalization against `baseUrl`).
 4. **Listing pages**: If `getAdapter(url)` matches and `validateListing(url)` is true, `adapter.parseData(res)` builds a `Property`, Joi-validates, then `store` → `putProperty`.
