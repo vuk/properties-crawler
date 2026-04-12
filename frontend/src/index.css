@@ -1329,6 +1329,10 @@ body {
   background: linear-gradient(135deg, #4f46e5, #4338ca);
 }
 
+.detail-badge--source {
+  background: linear-gradient(135deg, #44403c, #292524);
+}
+
 .detail-title {
   margin: 0 0 0.35rem;
   font-size: clamp(1.35rem, 2.5vw, 1.85rem);

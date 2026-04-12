@@ -7,6 +7,7 @@ import { useFavorites } from '../FavoritesContext'
 import { formatArea, formatPrice, formatRooms, formatUnitPrice } from '../format'
 import { MUNICIPALITY_OPTIONS } from '../municipalities'
 import {
+  propertyOriginLabel,
   propertySourceAttribution,
   propertySourceHostname,
 } from '../propertyOrigin'
@@ -69,6 +70,10 @@ export function PropertyDetailPage() {
   )
   const sourceHost = useMemo(
     () => (property ? propertySourceHostname(property.propertyUrl) : null),
+    [property],
+  )
+  const originLabel = useMemo(
+    () => (property ? propertyOriginLabel(property.propertyUrl) : null),
     [property],
   )
 
@@ -204,6 +209,9 @@ export function PropertyDetailPage() {
                   <span className="detail-badge detail-badge--service">
                     {serviceLabel}
                   </span>
+                ) : null}
+                {originLabel ? (
+                  <span className="detail-badge detail-badge--source">{originLabel}</span>
                 ) : null}
               </div>
 

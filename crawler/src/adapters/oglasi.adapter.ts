@@ -68,6 +68,9 @@ function parseRoomsOglasi(text: string): number {
   if (/garson|garsonjera|studio/.test(t)) return 1;
   const plus = t.match(/(\d+)\s*\+\s*sob/);
   if (plus) return parseInt(plus[1], 10) || 0;
+  // e.g. "5 soba i više" — take the leading room count
+  const vise = t.match(/(\d+(?:[.,]\d+)?)\s*sob[ae]?\s+i\s+više/);
+  if (vise) return parseFloat(vise[1].replace(",", ".")) || 0;
   const dec = t.match(/(\d+(?:[.,]\d+)?)\s*sob/);
   if (dec) return parseFloat(dec[1].replace(",", ".")) || 0;
   if (/peto\s*sob|petosoban/.test(t)) return 5;
@@ -148,7 +151,9 @@ export class OglasiAdapter extends AbstractAdapter {
 
   getRooms(entry: any): number {
     const $ = entry.$;
-    const raw = tableValueByLabel($, $("article").first(), "sobnost");
+    const article = $("article").first();
+    let raw = tableValueByLabel($, article, "broj soba");
+    if (!raw) raw = tableValueByLabel($, article, "sobnost");
     return parseRoomsOglasi(raw);
   }
 

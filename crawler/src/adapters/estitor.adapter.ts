@@ -2,17 +2,19 @@ import { AbstractAdapter, PropertyType, ServiceType } from "./abstract-adapter";
 import { resolveSerbianMunicipality, SerbianMunicipality } from "./serbian-municipality";
 
 /**
- * Estitor.com — **Serbia only** (`/rs/`, `/rs-en/`). Montenegro (`/me`, `/me-en`) is ignored.
+ * Estitor.com — **Serbia only** (`/rs/`). Montenegro (`/me`, `/me-en`) is ignored.
+ * English locale `/rs-en/` is not crawled: same listings as `/rs/`, which would duplicate rows keyed by URL.
  *
- * **Discovery** (`validateLink`): Serbia locale paths on `estitor.com`, except obvious static assets.
- * **Listings** (`validateListing`): Serbia paths whose last segment is `id-{digits}`.
+ * **Discovery** (`validateLink`): Serbian locale paths on `estitor.com`, except obvious static assets.
+ * **Listings** (`validateListing`): those paths whose last segment is `id-{digits}`.
  */
 const LISTING_ID_SEGMENT = /^id-\d+$/i;
 
-/** Serbian site sections: Cyrillic/Latin `rs` and English `rs-en`. */
+/** Serbian locale only (`/rs/…`). Excludes `/rs-en/` so English mirrors are not stored as separate ads. */
 function isSerbiaEstitorPath(pathname: string): boolean {
     const p = pathname.toLowerCase();
-    return p === "/rs" || p.startsWith("/rs/") || p === "/rs-en" || p.startsWith("/rs-en/");
+    if (p === "/rs-en" || p.startsWith("/rs-en/")) return false;
+    return p === "/rs" || p.startsWith("/rs/");
 }
 
 function pageHtml(entry: any): string {
@@ -248,11 +250,8 @@ export class EstitorAdapter extends AbstractAdapter {
     baseUrl = "https://estitor.com/";
     seedUrl: string[] = [
         "https://estitor.com/rs",
-        "https://estitor.com/rs-en",
         "https://estitor.com/rs/nekretnine/namena-prodaja/",
         "https://estitor.com/rs/nekretnine/namena-izdavanje/",
-        "https://estitor.com/rs-en/real-estates/purpose-sale/",
-        "https://estitor.com/rs-en/real-estates/purpose-rent/",
         "https://estitor.com/rs/nekretnine/namena-prodaja/tip-stan/grad-beograd/",
         "https://estitor.com/rs/nekretnine/namena-izdavanje/tip-stan/grad-beograd/",
         "https://estitor.com/rs/nekretnine/namena-prodaja/tip-kuca/grad-beograd/",
@@ -262,9 +261,6 @@ export class EstitorAdapter extends AbstractAdapter {
         "https://estitor.com/rs/nekretnine/namena-prodaja/tip-stan/grad-novi-sad/",
         "https://estitor.com/rs/nekretnine/namena-prodaja/tip-stan/grad-nis/",
         "https://estitor.com/rs/nekretnine/namena-prodaja/tip-stan/grad-subotica/",
-        "https://estitor.com/rs-en/real-estates/purpose-sale/type-apartment/city-beograd/",
-        "https://estitor.com/rs-en/real-estates/purpose-rent/type-apartment/city-beograd/",
-        "https://estitor.com/rs-en/real-estates/purpose-sale/type-house/city-beograd/",
     ];
 
     isType(url: string): EstitorAdapter | null {
